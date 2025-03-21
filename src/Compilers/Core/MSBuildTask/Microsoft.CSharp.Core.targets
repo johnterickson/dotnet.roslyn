@@ -32,13 +32,21 @@
     <LangVersion Condition="'$(LangVersion)' == '' AND '$(_MaxSupportedLangVersion)' != ''">$(_MaxSupportedLangVersion)</LangVersion>
   </PropertyGroup>
 
+  <Target Name="_CoreCompileInputs" DependsOnTargets="FindReferenceAssembliesForReferences">
+    <ItemGroup>
+      <_CoreCompileInputs Condition="'@(CoreCompileInputs)' != ''" Include="@(CoreCompileInputs)" />
+      <_CoreCompileInputs Condition="'@(CoreCompileInputs)' == ''" Include="@(ReferencePathWithRefAssemblies)" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="CoreCompile"
+          DependsOnTargets="_CoreCompileInputs"
           Inputs="$(MSBuildAllProjects);
                   @(Compile);
                   @(_CoreCompileResourceInputs);
                   $(ApplicationIcon);
                   $(KeyOriginatorFile);
-                  @(ReferencePathWithRefAssemblies);
+                  @(_CoreCompileInputs);
                   @(CompiledLicenseFile);
                   @(LinkResource);
                   @(EmbeddedDocumentation);
@@ -58,7 +66,7 @@
                    $(NonExistentFile);
                    @(CustomAdditionalCompileOutputs)"
           Returns="@(CscCommandLineArgs)"
-          DependsOnTargets="$(CoreCompileDependsOn);_BeforeVBCSCoreCompile">
+          Deferred="Item:ReferencePathWithRefAssemblies">
     <!-- These two compiler warnings are raised when a reference is bound to a different version
              than specified in the assembly reference version number.  MSBuild raises the same warning in this case,
              so the compiler warning would be redundant. -->

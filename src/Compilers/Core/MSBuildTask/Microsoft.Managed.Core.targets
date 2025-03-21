@@ -10,7 +10,7 @@
 
   <Target Name="ShimReferencePathsWhenCommonTargetsDoesNotUnderstandReferenceAssemblies"
           BeforeTargets="CoreCompile"
-          Condition="'@(ReferencePathWithRefAssemblies)' == ''">
+          Condition="'$(FindReferenceAssembliesForReferencesRan)' != 'true'">
     <!-- 
       FindReferenceAssembliesForReferences target in Common targets populate this item 
       since dev15.3. The compiler targets may be used (via NuGet package) on earlier MSBuilds. 
@@ -151,7 +151,7 @@
       <CompilerVisibleProperty Include="PropertyNameToEval" />
       <CompilerVisibleItemMetadata Include="ItemType" MetadataName="MetadataToRetrieve" />
     -->
-  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.GenerateMSBuildEditorConfig" AssemblyFile="$(MSBuildThisFileDirectory)Microsoft.Build.Tasks.CodeAnalysis.dll" />
+  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.GenerateMSBuildEditorConfig" AssemblyFile="$(MSBuildThisFileDirectory)Microsoft.Build.Tasks.CodeAnalysis.dll" PrecomputationMode="Dynamic" />
 
   <Target Name="GenerateMSBuildEditorConfigFile"
           BeforeTargets="BeforeCompile;CoreCompile"
