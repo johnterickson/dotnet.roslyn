@@ -168,7 +168,8 @@
 
   <Target Name="GenerateMSBuildEditorConfigFileCore"
           Condition="'$(_GeneratedEditorConfigShouldRun)' == 'true'"
-          Outputs="$(GeneratedMSBuildEditorConfigFile)">
+          Outputs="$(GeneratedMSBuildEditorConfigFile)"
+          Deferred="Property:GeneratedMSBuildEditorConfigFile:r">
 
     <ItemGroup>
       <!-- Collect requested properties, and eval their value -->
