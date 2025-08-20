@@ -4,7 +4,7 @@
   <!--
     Common targets for managed compilers.
   -->
-  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.MapSourceRoots" AssemblyFile="$(MSBuildThisFileDirectory)Microsoft.Build.Tasks.CodeAnalysis.dll" />
+  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.MapSourceRoots" AssemblyFile="$(MSBuildThisFileDirectory)Microsoft.Build.Tasks.CodeAnalysis.dll" TaskMode="Static" />
 
   <Import Project="Microsoft.Managed.Core.CurrentVersions.targets" />
 
