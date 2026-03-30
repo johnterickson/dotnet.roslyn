@@ -24,7 +24,7 @@ namespace Microsoft.CodeAnalysis.EditAndContinue;
 /// Encapsulates access to the last committed solution.
 /// We don't want to expose the solution directly since access to documents must be gated by out-of-sync checks.
 /// </summary>
-internal sealed class CommittedSolution
+internal sealed class CommittedSolution(DebuggingSession debuggingSession, Solution solution)
 {
     internal enum DocumentState
     {
@@ -57,24 +57,24 @@ internal sealed class CommittedSolution
         MatchesBuildOutput = 4
     }
 
-    private readonly DebuggingSession _debuggingSession;
-
     /// <summary>
     /// Current solution snapshot used as a baseline for calculating EnC delta.
     /// </summary>
-    private Solution _solution;
+    private Solution _solution = solution;
 
     /// <summary>
     /// Tracks stale projects. Changes in these projects are ignored and their representation in the <see cref="_solution"/> does not match the binaries on disk.
+    /// The value is the MVID of the module at the time it was determined to be stale (source code content did not match the PDB).
+    /// A build that updates the binary to new content (that presumably matches the source code) will update the MVID. When that happens we unstale the project.
     /// 
     /// Build of a multi-targeted project that sets <c>SingleTargetBuildForStartupProjects</c> msbuild property (e.g. MAUI) only 
     /// builds TFM that's active. Other TFMs of the projects remain unbuilt or stale (from previous build).
     /// 
     /// A project is removed from this set if it's rebuilt.
     /// 
-    /// Lock <see cref="_guard"/> to access.
+    /// Lock <see cref="_guard"/> to update.
     /// </summary>
-    private readonly HashSet<ProjectId> _staleProjects = [];
+    private ImmutableDictionary<ProjectId, StaleProjectInfo> _staleProjects = ImmutableDictionary<ProjectId, StaleProjectInfo>.Empty;
 
     /// <summary>
     /// Implements workaround for https://github.com/dotnet/project-system/issues/5457.
@@ -108,13 +108,6 @@ internal sealed class CommittedSolution
 
     private readonly object _guard = new();
 
-    public CommittedSolution(DebuggingSession debuggingSession, Solution solution, IEnumerable<KeyValuePair<DocumentId, DocumentState>> initialDocumentStates)
-    {
-        _solution = solution;
-        _debuggingSession = debuggingSession;
-        _documentState.AddRange(initialDocumentStates);
-    }
-
     // test only
     internal void Test_SetDocumentState(DocumentId documentId, DocumentState state)
     {
@@ -133,22 +126,14 @@ internal sealed class CommittedSolution
         }
     }
 
-    public bool HasNoChanges(Solution solution)
-        => _solution == solution;
-
     public Project? GetProject(ProjectId id)
         => _solution.GetProject(id);
 
     public Project GetRequiredProject(ProjectId id)
         => _solution.GetRequiredProject(id);
 
-    public bool IsStaleProject(ProjectId id)
-    {
-        lock (_guard)
-        {
-            return _staleProjects.Contains(id);
-        }
-    }
+    public ImmutableDictionary<ProjectId, StaleProjectInfo> StaleProjects
+        => _staleProjects;
 
     public ImmutableArray<DocumentId> GetDocumentIdsWithFilePath(string path)
         => _solution.GetDocumentIdsWithFilePath(path);
@@ -238,7 +223,7 @@ internal sealed class CommittedSolution
             return (null, DocumentState.DesignTimeOnly);
         }
 
-        if (!document.DocumentState.SupportsEditAndContinue())
+        if (document.DocumentState.IgnoreForEditAndContinue())
         {
             return (null, DocumentState.DesignTimeOnly);
         }
@@ -341,17 +326,34 @@ internal sealed class CommittedSolution
     {
         Contract.ThrowIfNull(document.FilePath);
 
-        var maybePdbHasDocument = TryReadSourceFileChecksumFromPdb(document, out var requiredChecksum, out var checksumAlgorithm);
+        var maybePdbHasDocument = TryReadSourceFileDebugInfo(document, sourceText.Encoding, out var requiredChecksum, out var checksumAlgorithm, out var defaultEncoding);
 
         var maybeMatchingSourceText = (maybePdbHasDocument == true)
-            ? await TryGetMatchingSourceTextAsync(_debuggingSession.SessionLog, sourceText, document.FilePath, currentDocument, _debuggingSession.SourceTextProvider, requiredChecksum, checksumAlgorithm, cancellationToken).ConfigureAwait(false)
+            ? await TryGetMatchingSourceTextAsync(
+                debuggingSession.SessionLog,
+                sourceText,
+                document.FilePath,
+                currentDocument,
+                debuggingSession.SourceTextProvider,
+                requiredChecksum,
+                checksumAlgorithm,
+                defaultEncoding,
+                cancellationToken).ConfigureAwait(false)
             : default;
 
         return (maybeMatchingSourceText, maybePdbHasDocument);
     }
 
     private static async ValueTask<Optional<SourceText?>> TryGetMatchingSourceTextAsync(
-        TraceLog log, SourceText sourceText, string filePath, Document? currentDocument, IPdbMatchingSourceTextProvider sourceTextProvider, ImmutableArray<byte> requiredChecksum, SourceHashAlgorithm checksumAlgorithm, CancellationToken cancellationToken)
+        TraceLog log,
+        SourceText sourceText,
+        string filePath,
+        Document? currentDocument,
+        IPdbMatchingSourceTextProvider sourceTextProvider,
+        ImmutableArray<byte> requiredChecksum,
+        SourceHashAlgorithm checksumAlgorithm,
+        Encoding? defaultEncoding,
+        CancellationToken cancellationToken)
     {
         if (IsMatchingSourceText(sourceText, requiredChecksum, checksumAlgorithm))
         {
@@ -370,71 +372,10 @@ internal sealed class CommittedSolution
         var text = await sourceTextProvider.TryGetMatchingSourceTextAsync(filePath, requiredChecksum, checksumAlgorithm, cancellationToken).ConfigureAwait(false);
         if (text != null)
         {
-            return SourceText.From(text, sourceText.Encoding, checksumAlgorithm);
+            return SourceText.From(text, defaultEncoding, checksumAlgorithm);
         }
 
-        return await Task.Run(() => TryGetPdbMatchingSourceTextFromDisk(log, filePath, sourceText.Encoding, requiredChecksum, checksumAlgorithm), cancellationToken).ConfigureAwait(false);
-    }
-
-    internal static async Task<IEnumerable<KeyValuePair<DocumentId, DocumentState>>> GetMatchingDocumentsAsync(
-        TraceLog log,
-        IEnumerable<(Project, IEnumerable<CodeAnalysis.DocumentState>)> documentsByProject,
-        Func<Project, CompilationOutputs> compilationOutputsProvider,
-        IPdbMatchingSourceTextProvider sourceTextProvider,
-        CancellationToken cancellationToken)
-    {
-        var projectTasks = documentsByProject.Select(async projectDocumentStates =>
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var (project, documentStates) = projectDocumentStates;
-
-            // Skip projects that do not support Roslyn EnC (e.g. F#, etc).
-            // Source files of these may not even be captured in the solution snapshot.
-            if (!project.SupportsEditAndContinue())
-            {
-                return [];
-            }
-
-            using var debugInfoReaderProvider = GetMethodDebugInfoReader(log, compilationOutputsProvider(project), project.Name);
-            if (debugInfoReaderProvider == null)
-            {
-                return [];
-            }
-
-            var debugInfoReader = debugInfoReaderProvider.CreateEditAndContinueMethodDebugInfoReader();
-
-            var documentTasks = documentStates.Select(async documentState =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (documentState.SupportsEditAndContinue())
-                {
-                    var sourceFilePath = documentState.FilePath;
-                    Contract.ThrowIfNull(sourceFilePath);
-
-                    // Hydrate the solution snapshot with the content of the file.
-                    // It's important to do this before we start watching for changes so that we have a baseline we can compare future snapshots to.
-                    var sourceText = await documentState.GetTextAsync(cancellationToken).ConfigureAwait(false);
-
-                    // TODO: https://github.com/dotnet/roslyn/issues/51993
-                    // avoid rereading the file in common case - the workspace should create source texts with the right checksum algorithm and encoding
-                    if (TryReadSourceFileChecksumFromPdb(log, debugInfoReader, sourceFilePath, out var requiredChecksum, out var checksumAlgorithm) == true &&
-                        await TryGetMatchingSourceTextAsync(log, sourceText, sourceFilePath, currentDocument: null, sourceTextProvider, requiredChecksum, checksumAlgorithm, cancellationToken).ConfigureAwait(false) is { HasValue: true, Value: not null })
-                    {
-                        return documentState.Id;
-                    }
-                }
-
-                return null;
-            });
-
-            return await Task.WhenAll(documentTasks).ConfigureAwait(false);
-        });
-
-        var documentIdArrays = await Task.WhenAll(projectTasks).ConfigureAwait(false);
-
-        return documentIdArrays.SelectMany(ids => ids.WhereNotNull()).Select(id => KeyValuePair.Create(id, DocumentState.MatchesBuildOutput));
+        return await Task.Run(() => TryGetPdbMatchingSourceTextFromDisk(log, filePath, defaultEncoding, requiredChecksum, checksumAlgorithm), cancellationToken).ConfigureAwait(false);
     }
 
     private static DebugInformationReaderProvider? GetMethodDebugInfoReader(TraceLog log, CompilationOutputs compilationOutputs, string projectName)
@@ -458,16 +399,18 @@ internal sealed class CommittedSolution
         }
     }
 
-    public void CommitChanges(Solution solution, ImmutableArray<ProjectId> projectsToStale, IReadOnlyCollection<ProjectId> projectsToUnstale)
+    public void CommitChanges(Solution solution, ImmutableDictionary<ProjectId, StaleProjectInfo> staleProjects)
     {
-        Debug.Assert(projectsToStale.Intersect(projectsToUnstale).IsEmpty());
-
         lock (_guard)
         {
             _solution = solution;
-            _staleProjects.AddRange(projectsToStale);
-            _staleProjects.RemoveRange(projectsToUnstale);
-            _documentState.RemoveAll(static (documentId, _, projectsToUnstale) => projectsToUnstale.Contains(documentId.ProjectId), projectsToUnstale);
+
+            var oldStaleProjects = _staleProjects;
+            _staleProjects = staleProjects;
+
+            _documentState.RemoveAll(
+                static (documentId, _, args) => args.oldStaleProjects.ContainsKey(documentId.ProjectId) && !args.staleProjects.ContainsKey(documentId.ProjectId),
+                (oldStaleProjects, staleProjects));
         }
     }
 
@@ -477,7 +420,7 @@ internal sealed class CommittedSolution
     private static Optional<SourceText?> TryGetPdbMatchingSourceTextFromDisk(
         TraceLog log,
         string sourceFilePath,
-        Encoding? encoding,
+        Encoding? defaultEncoding,
         ImmutableArray<byte> requiredChecksum,
         SourceHashAlgorithm checksumAlgorithm)
     {
@@ -485,11 +428,7 @@ internal sealed class CommittedSolution
         {
             using var fileStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
 
-            // We must use the encoding of the document as determined by the IDE (the editor).
-            // This might differ from the encoding that the compiler chooses, so if we just relied on the compiler we 
-            // might end up updating the committed solution with a document that has a different encoding than 
-            // the one that's in the workspace, resulting in false document changes when we compare the two.
-            var sourceText = SourceText.From(fileStream, encoding, checksumAlgorithm);
+            var sourceText = SourceText.From(fileStream, defaultEncoding, checksumAlgorithm);
 
             if (IsMatchingSourceText(sourceText, requiredChecksum, checksumAlgorithm))
             {
@@ -510,22 +449,39 @@ internal sealed class CommittedSolution
         }
     }
 
-    private bool? TryReadSourceFileChecksumFromPdb(Document document, out ImmutableArray<byte> requiredChecksum, out SourceHashAlgorithm checksumAlgorithm)
+    private bool? TryReadSourceFileDebugInfo(Document document, Encoding? documentEncoding, out ImmutableArray<byte> checksum, out SourceHashAlgorithm checksumAlgorithm, out Encoding? defaultEncoding)
     {
         Contract.ThrowIfNull(document.FilePath);
+        defaultEncoding = null;
 
-        var compilationOutputs = _debuggingSession.GetCompilationOutputs(document.Project);
-        using var debugInfoReaderProvider = GetMethodDebugInfoReader(_debuggingSession.SessionLog, compilationOutputs, document.Project.Name);
+        var compilationOutputs = debuggingSession.GetCompilationOutputs(document.Project);
+        using var debugInfoReaderProvider = GetMethodDebugInfoReader(debuggingSession.SessionLog, compilationOutputs, document.Project.Name);
         if (debugInfoReaderProvider == null)
         {
             // unable to determine whether document is in the PDB
-            requiredChecksum = default;
+            checksum = default;
             checksumAlgorithm = default;
             return null;
         }
 
-        var debugInfoReader = debugInfoReaderProvider.CreateEditAndContinueMethodDebugInfoReader();
-        return TryReadSourceFileChecksumFromPdb(_debuggingSession.SessionLog, debugInfoReader, document.FilePath, out requiredChecksum, out checksumAlgorithm);
+        var debugInfoReader = debugInfoReaderProvider.CreateEditAndContinueDebugInfoReader();
+
+        var result = TryReadSourceFileChecksumFromPdb(debuggingSession.SessionLog, debugInfoReader, document.FilePath, out checksum, out checksumAlgorithm);
+
+        if (result == true)
+        {
+            try
+            {
+                defaultEncoding = debugInfoReader.GetDefaultSourceFileEncoding();
+            }
+            catch (NotSupportedException e)
+            {
+                debuggingSession.SessionLog.Write($"Unable to determine default defaultEncoding for '{document.FilePath}': {e.Message}");
+                defaultEncoding = documentEncoding;
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -536,7 +492,7 @@ internal sealed class CommittedSolution
     /// </summary>
     private static bool? TryReadSourceFileChecksumFromPdb(
         TraceLog log,
-        EditAndContinueMethodDebugInfoReader debugInfoReader,
+        EditAndContinueDebugInfoReader debugInfoReader,
         string sourceFilePath,
         out ImmutableArray<byte> checksum,
         out SourceHashAlgorithm algorithm)

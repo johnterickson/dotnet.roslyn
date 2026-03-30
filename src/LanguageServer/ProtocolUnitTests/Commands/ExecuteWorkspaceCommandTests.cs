@@ -18,6 +18,7 @@ using Xunit;
 using Xunit.Abstractions;
 
 namespace Microsoft.CodeAnalysis.LanguageServer.UnitTests.Commands;
+
 public sealed class ExecuteWorkspaceCommandTests : AbstractLanguageServerProtocolTests
 {
     protected override TestComposition Composition => base.Composition.AddParts(
@@ -34,7 +35,7 @@ public sealed class ExecuteWorkspaceCommandTests : AbstractLanguageServerProtoco
 
         var request = new ExecuteCommandParams()
         {
-            Arguments = new object[] { JsonSerializer.Serialize(new TextDocumentIdentifier { DocumentUri = ProtocolConversions.CreateAbsoluteDocumentUri(@"C:\someFile.cs") }) },
+            Arguments = [JsonSerializer.Serialize(new TextDocumentIdentifier { DocumentUri = ProtocolConversions.CreateAbsoluteDocumentUri(@"C:\someFile.cs") })],
             Command = TestWorkspaceCommandHandler.CommandName
         };
         var response = await server.ExecuteRequestAsync<ExecuteCommandParams, object>(Methods.WorkspaceExecuteCommandName, request, CancellationToken.None);
@@ -66,9 +67,9 @@ public sealed class ExecuteWorkspaceCommandTests : AbstractLanguageServerProtoco
             return JsonSerializer.Deserialize<TextDocumentIdentifier>((JsonElement)request.Arguments!.First(), ProtocolConversions.LspJsonSerializerOptions)!;
         }
 
-        public override Task<object> HandleRequestAsync(ExecuteCommandParams request, RequestContext context, CancellationToken cancellationToken)
+        public override async Task<object> HandleRequestAsync(ExecuteCommandParams request, RequestContext context, CancellationToken cancellationToken)
         {
-            return Task.FromResult<object>(true);
+            return true;
         }
     }
 }

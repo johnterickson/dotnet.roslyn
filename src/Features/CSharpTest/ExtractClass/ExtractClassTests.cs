@@ -96,9 +96,8 @@ public sealed class ExtractClassTests
     }
 
     [Fact]
-    public async Task TestErrorBaseMethod()
-    {
-        await new Test
+    public Task TestErrorBaseMethod()
+        => new Test
         {
             TestCode = """
             class ErrorBase
@@ -114,12 +113,10 @@ public sealed class ExtractClassTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMiscellaneousFiles()
-    {
-        await new Test
+    public Task TestMiscellaneousFiles()
+        => new Test
         {
             TestCode = """
             class Test
@@ -145,7 +142,6 @@ public sealed class ExtractClassTests
             """,
             WorkspaceKind = WorkspaceKind.MiscellaneousFiles
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestPartialClass()
@@ -233,7 +229,6 @@ public sealed class ExtractClassTests
                 {
                 }
             }
-
             """;
 
         await new Test
@@ -316,7 +311,6 @@ public sealed class ExtractClassTests
             {
                 public string S { get; set; }
             }
-
             """;
 
         await new Test
@@ -417,11 +411,8 @@ public sealed class ExtractClassTests
     }
 
     [Fact]
-    public async Task TestRecordParam()
-    {
-        // https://github.com/dotnet/roslyn/issues/62415 to make this scenario work
-
-        await new Test
+    public Task TestRecordParam()
+        => new Test
         {
             TestCode = """
             record R(string $$S)
@@ -431,12 +422,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp9,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestClassParam1()
-    {
-        await new Test
+    public Task TestClassParam1()
+        => new Test
         {
             TestCode = """
             class R(string $$S)
@@ -446,12 +435,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestClassParam2()
-    {
-        await new Test
+    public Task TestClassParam2()
+        => new Test
         {
             TestCode = """
             class R(string $$S);
@@ -459,12 +446,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestStructParam1()
-    {
-        await new Test
+    public Task TestStructParam1()
+        => new Test
         {
             TestCode = """
             struct R(string $$S)
@@ -474,12 +459,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestStructParam2()
-    {
-        await new Test
+    public Task TestStructParam2()
+        => new Test
         {
             TestCode = """
             struct R(string $$S);
@@ -487,12 +470,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestRecordStruct()
-    {
-        await new Test
+    public Task TestRecordStruct()
+        => new Test
         {
             TestCode = """
             record struct R(string S)
@@ -505,12 +486,10 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp10,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestStruct()
-    {
-        await new Test
+    public Task TestStruct()
+        => new Test
         {
             TestCode = """
             struct R(string S)
@@ -523,7 +502,6 @@ public sealed class ExtractClassTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestInNamespace()
@@ -2154,9 +2132,8 @@ public sealed class ExtractClassTests
     }
 
     [Fact]
-    public async Task TestSameFile()
-    {
-        await new Test
+    public Task TestSameFile()
+        => new Test
         {
             TestCode = """
             class Test
@@ -2180,7 +2157,6 @@ public sealed class ExtractClassTests
             """,
             SameFile = true,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestClassDeclaration()
@@ -2695,9 +2671,8 @@ public sealed class ExtractClassTests
     }
 
     [Fact]
-    public async Task TestIncompleteFieldSelection_NoAction1()
-    {
-        await new Test
+    public Task TestIncompleteFieldSelection_NoAction1()
+        => new Test
         {
             TestCode = """
             class C
@@ -2706,12 +2681,10 @@ public sealed class ExtractClassTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestIncompleteMethodSelection_NoAction()
-    {
-        await new Test
+    public Task TestIncompleteMethodSelection_NoAction()
+        => new Test
         {
             TestCode = """
             class C
@@ -2723,12 +2696,10 @@ public sealed class ExtractClassTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestTopLevelStatementSelection_NoAction()
-    {
-        await new Test
+    public Task TestTopLevelStatementSelection_NoAction()
+        => new Test
         {
             TestCode = """
             [||]_ = 42;
@@ -2739,7 +2710,6 @@ public sealed class ExtractClassTests
                 OutputKind = OutputKind.ConsoleApplication
             }
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestSealed()
@@ -2782,9 +2752,8 @@ public sealed class ExtractClassTests
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/63315")]
-    public async Task TestMethodInsideNamespace_NoException()
-    {
-        await new Test()
+    public Task TestMethodInsideNamespace_NoException()
+        => new Test()
         {
             TestCode = """
                 namespace N
@@ -2848,12 +2817,10 @@ public sealed class ExtractClassTests
             },
             FileName = "Test1.cs"
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/55610")]
-    public async Task TestMultipleMethodsSelected_WithTypeContainingBaseClass()
-    {
-        await new Test()
+    public Task TestMultipleMethodsSelected_WithTypeContainingBaseClass()
+        => new Test()
         {
             TestCode = """
             class Base
@@ -2867,12 +2834,10 @@ public sealed class ExtractClassTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/55610")]
-    public async Task TestClassSelected_WithTypeContainingBaseClass()
-    {
-        await new Test()
+    public Task TestClassSelected_WithTypeContainingBaseClass()
+        => new Test()
         {
             TestCode = """
             class Base
@@ -2886,7 +2851,6 @@ public sealed class ExtractClassTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestMultipleMethodsSelected_HighlightedMembersAreSelected()
@@ -2961,6 +2925,199 @@ public sealed class ExtractClassTests
                 }
             },
             FileName = "Test1.cs",
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81066")]
+    public async Task TestPartialEvent()
+    {
+        var input1 = """
+            using System;
+
+            partial class C
+            {
+                public partial event EventHandler [||]E;
+            }
+            """;
+
+        var input2 = """
+            using System;
+
+            partial class C
+            {
+                public partial event EventHandler E { add { } remove { } }
+            }
+            """;
+
+        var expected1 = """
+            using System;
+
+            partial class C : MyBase
+            {
+            }
+            """;
+
+        var expected2 = """
+            using System;
+
+            partial class C
+            {
+                public partial event EventHandler {|CS9276:E|} { add { } remove { } }
+            }
+            """;
+
+        var expected3 = """
+            using System;
+
+            internal class MyBase
+            {
+                public event EventHandler E;
+            }
+            """;
+
+        await new Test
+        {
+            TestState =
+            {
+                Sources =
+                {
+                    input1,
+                    input2,
+                }
+            },
+            FixedState =
+            {
+                Sources =
+                {
+                    expected1,
+                    expected2,
+                    expected3,
+                }
+            },
+            FileName = "Test2.cs",
+            LanguageVersion = LanguageVersion.CSharp14,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81066")]
+    public async Task TestPartialProperty()
+    {
+        var input1 = """
+            partial class C
+            {
+                public partial int [||]P { get; }
+            }
+            """;
+
+        var input2 = """
+            partial class C
+            {
+                public partial int P => 42;
+            }
+            """;
+
+        var expected1 = """
+            partial class C : MyBase
+            {
+            }
+            """;
+
+        var expected2 = """
+            partial class C
+            {
+                public partial int {|CS9249:P|} => 42;
+            }
+            """;
+
+        var expected3 = """
+            internal class MyBase
+            {
+                public partial int {|CS9248:{|CS0751:P|}|} { get; }
+            }
+            """;
+
+        await new Test
+        {
+            TestState =
+            {
+                Sources =
+                {
+                    input1,
+                    input2,
+                }
+            },
+            FixedState =
+            {
+                Sources =
+                {
+                    expected1,
+                    expected2,
+                    expected3,
+                }
+            },
+            FileName = "Test2.cs",
+            LanguageVersion = LanguageVersion.CSharp14,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81066")]
+    public async Task TestPartialMethod()
+    {
+        var input1 = """
+            partial class C
+            {
+                public partial void [||]M();
+            }
+            """;
+
+        var input2 = """
+            partial class C
+            {
+                public partial void M() { }
+            }
+            """;
+
+        var expected1 = """
+            partial class C : MyBase
+            {
+            }
+            """;
+
+        var expected2 = """
+            partial class C
+            {
+                public partial void {|CS0759:M|}() { }
+            }
+            """;
+
+        var expected3 = """
+            internal class MyBase
+            {
+                public partial void {|CS8795:{|CS0751:M|}|}();
+            }
+            """;
+
+        await new Test
+        {
+            TestState =
+            {
+                Sources =
+                {
+                    input1,
+                    input2,
+                }
+            },
+            FixedState =
+            {
+                Sources =
+                {
+                    expected1,
+                    expected2,
+                    expected3,
+                }
+            },
+            FileName = "Test2.cs",
+            LanguageVersion = LanguageVersion.CSharp14,
         }.RunAsync();
     }
 

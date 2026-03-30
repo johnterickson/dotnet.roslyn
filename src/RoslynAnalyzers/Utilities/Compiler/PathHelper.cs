@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#if CODEANALYSIS_V3_OR_BETTER
-
 using System;
 using System.IO;
 using Roslyn.Utilities;
@@ -12,7 +10,7 @@ namespace Analyzer.Utilities
 {
     internal static class PathHelper
     {
-        private static readonly char[] DirectorySeparatorCharacters = { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
+        private static readonly char[] DirectorySeparatorCharacters = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
         public static ReadOnlySpan<char> GetFileName(string? path)
         {
@@ -27,5 +25,3 @@ namespace Analyzer.Utilities
         }
     }
 }
-
-#endif

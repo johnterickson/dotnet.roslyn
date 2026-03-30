@@ -66,9 +66,7 @@ public sealed partial class DataProviderTests
 
     [Fact]
     public void TestGettingAnalyzerSettingsProvider()
-    {
-        TestGettingSettingsProviderFromWorkspace<AnalyzerSetting>();
-    }
+        => TestGettingSettingsProviderFromWorkspace<AnalyzerSetting>();
 
     [Fact]
     public void TestGettingCodeStyleSettingsProvider()
@@ -86,9 +84,7 @@ public sealed partial class DataProviderTests
 
     [Fact]
     public void TestGettingNamingStyleSettingsProvider()
-    {
-        TestGettingSettingsProviderFromWorkspace<NamingStyleSetting>();
-    }
+        => TestGettingSettingsProviderFromWorkspace<NamingStyleSetting>();
 
     [Fact]
     public void TestGettingAnalyzerSettingsProviderWorkspaceServiceAsync()
@@ -123,7 +119,8 @@ public sealed partial class DataProviderTests
             .Remove(CodeStyleOptions2.OperatorPlacementWhenWrapping)
             .Remove(CodeStyleOptions2.FileHeaderTemplate)
             .Remove(CodeStyleOptions2.RemoveUnnecessarySuppressionExclusions)
-            .Remove(CodeStyleOptions2.ForEachExplicitCastInSource);
+            .Remove(CodeStyleOptions2.ForEachExplicitCastInSource)
+            .Remove(CodeStyleOptions2.PreferNonHiddenExplicitCastInSource);
 
         AssertEx.Equal(
             optionsWithUI.OrderBy(o => o.Definition.ConfigName),

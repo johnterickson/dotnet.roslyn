@@ -27,28 +27,35 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
         return TestNode<CompilationUnitSyntax>(code, expected);
     }
 
-    [Fact]
-    public async Task TestEmptyFile()
+    private Task TestCompilationUnitWithNamespaces(
+        string code, string expected)
     {
-        await TestCompilationUnit("", "");
+        return TestNode<CompilationUnitSyntax>(code, expected, returnNamespaces: true);
+    }
+
+    private Task TestNamespaceDeclaration(
+        string code, string expected)
+    {
+        return TestNode<BaseNamespaceDeclarationSyntax>(code, expected, returnNamespaces: true);
     }
 
     [Fact]
-    public async Task TestTopLevelClass()
-    {
-        await TestCompilationUnit("""
+    public Task TestEmptyFile()
+        => TestCompilationUnit("", "");
+
+    [Fact]
+    public Task TestTopLevelClass()
+        => TestCompilationUnit("""
             class [|C|]
             {
             }
             """, """
             Name="C" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestTwoTopLevelTypes()
-    {
-        await TestCompilationUnit("""
+    public Task TestTwoTopLevelTypes()
+        => TestCompilationUnit("""
             class [|C|]
             {
             }
@@ -60,12 +67,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="C" Glyph=ClassInternal HasItems=False
             Name="D" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestDelegatesAndEnums()
-    {
-        await TestCompilationUnit("""
+    public Task TestDelegatesAndEnums()
+        => TestCompilationUnit("""
             delegate string [|D|](int x);
 
             enum [|E|]
@@ -75,12 +80,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="D(int) : string" Glyph=DelegateInternal HasItems=False
             Name="E" Glyph=EnumInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestTypesInBlockNamespace()
-    {
-        await TestCompilationUnit("""
+    public Task TestTypesInBlockNamespace()
+        => TestCompilationUnit("""
             namespace N
             {
                 class [|C|]
@@ -95,12 +98,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="C" Glyph=ClassInternal HasItems=False
             Name="D" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestTypesInFileScopedNamespace()
-    {
-        await TestCompilationUnit("""
+    public Task TestTypesInFileScopedNamespace()
+        => TestCompilationUnit("""
             namespace N;
 
             class [|C|]
@@ -114,12 +115,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="C" Glyph=ClassInternal HasItems=False
             Name="D" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestTypesAcrossNamespaces()
-    {
-        await TestCompilationUnit("""
+    public Task TestTypesAcrossNamespaces()
+        => TestCompilationUnit("""
             class [|C|]
             {
             }
@@ -134,27 +133,23 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="C" Glyph=ClassInternal HasItems=False
             Name="D" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Theory, CombinatorialData]
-    public async Task TestTypePermutations(
+    public Task TestTypePermutations(
         [CombinatorialValues("Public", "Private", "Protected", "Internal")] string accessibility,
         [CombinatorialValues("Record", "Class", "Interface", "Struct")] string type)
-    {
-        await TestCompilationUnit($$"""
+        => TestCompilationUnit($$"""
             {{accessibility.ToLowerInvariant()}} {{type.ToLowerInvariant()}} [|C|]
             {
             }
             """, $$"""
             Name="C" Glyph={{type switch { "Record" => "Class", "Struct" => "Structure", _ => type }}}{{accessibility}} HasItems=False
             """);
-    }
 
     [Theory, CombinatorialData]
-    public async Task TestTypeHasItems(
+    public Task TestTypeHasItems(
         [CombinatorialValues("Record", "Class", "Interface", "Struct")] string type)
-    {
-        await TestCompilationUnit($$"""
+        => TestCompilationUnit($$"""
             {{type.ToLowerInvariant()}} [|C|]
             {
                 int i;
@@ -162,12 +157,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             """, $$"""
             Name="C" Glyph={{type switch { "Record" => "Class", "Struct" => "Structure", _ => type }}}Internal HasItems=True
             """);
-    }
 
     [Fact]
-    public async Task TestEnumHasItems()
-    {
-        await TestCompilationUnit("""
+    public Task TestEnumHasItems()
+        => TestCompilationUnit("""
             enum [|E|]
             {
                 A,
@@ -177,7 +170,6 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             """, """
             Name="E" Glyph=EnumInternal HasItems=True
             """);
-    }
 
     [Theory]
     [InlineData("int", "int")]
@@ -194,42 +186,35 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
     [InlineData("A::B.C", "C")]
     [InlineData("A", "A")]
     [InlineData("A.B<C::D, E::F.G<int>>", "B<D, G<int>>")]
-    public async Task TestTypes(
+    public Task TestTypes(
         string parameterType, string resultType)
-    {
-        await TestCompilationUnit($$"""
+        => TestCompilationUnit($$"""
             delegate void [|D|]({{parameterType}} x);
             """, $$"""
             Name="D({{resultType}}) : void" Glyph=DelegateInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestGenericClass()
-    {
-        await TestCompilationUnit("""
+    public Task TestGenericClass()
+        => TestCompilationUnit("""
             class [|C|]<T>
             {
             }
             """, """
             Name="C<T>" Glyph=ClassInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestGenericDelegate()
-    {
-        await TestCompilationUnit("""
+    public Task TestGenericDelegate()
+        => TestCompilationUnit("""
             delegate void [|D|]<T>();
             """, """
             Name="D<T>() : void" Glyph=DelegateInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestEnumMembers()
-    {
-        await TestNode<EnumDeclarationSyntax>("""
+    public Task TestEnumMembers()
+        => TestNode<EnumDeclarationSyntax>("""
             enum E
             {
                 [|A|], [|B|], [|C|]
@@ -239,12 +224,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="B" Glyph=EnumMemberPublic HasItems=False
             Name="C" Glyph=EnumMemberPublic HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestClassMembers()
-    {
-        await TestNode<ClassDeclarationSyntax>("""
+    public Task TestClassMembers()
+        => TestNode<ClassDeclarationSyntax>("""
             class C
             {
                 private int [|a|], [|b|];
@@ -278,12 +261,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="operator +(C, int) : C" Glyph=OperatorPublic HasItems=False
             Name="implicit operator int(C)" Glyph=OperatorInternal HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestExtension1()
-    {
-        await TestNode<ClassDeclarationSyntax>("""
+    public Task TestExtension1()
+        => TestNode<ClassDeclarationSyntax>("""
             static class C
             {
                 [|extension|]<T>(int i)
@@ -296,12 +277,10 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             Name="extension<T>(int)" Glyph=ClassPublic HasItems=False
             Name="M(int) : void" Glyph=ExtensionMethodPublic HasItems=False
             """);
-    }
 
     [Fact]
-    public async Task TestExtension2()
-    {
-        await TestNode<ExtensionBlockDeclarationSyntax>("""
+    public Task TestExtension2()
+        => TestNode<ExtensionBlockDeclarationSyntax>("""
             static class C
             {
                 extension<T>(int i)
@@ -312,5 +291,355 @@ public sealed class CSharpSolutionExplorerSymbolTreeItemProviderTests
             """, """
             Name="M() : void" Glyph=ExtensionMethodPublic HasItems=False
             """);
-    }
+
+    [Fact]
+    public Task TestMemberSetsHasItemsForLocalFunction()
+        => TestNode<ClassDeclarationSyntax>("""
+            class C
+            {
+                private void [|M|]()
+                {
+                    void MethodLocal() { }
+                }
+            }
+            """, """
+            Name="M() : void" Glyph=MethodPrivate HasItems=True
+            """);
+
+    [Fact]
+    public Task TestLocalFunctionSetsHasItemsForNestedLocalFunction()
+        => TestNode<MethodDeclarationSyntax>("""
+            class C
+            {
+                private void M()
+                {
+                    void [|MethodLocal|]()
+                    {
+                        void NestedLocal() { }
+                    }
+                }
+            }
+            """, """
+            Name="MethodLocal() : void" Glyph=MethodPrivate HasItems=True
+            """);
+
+    [Fact]
+    public Task TestLocalFunctionReturnsNestedLocalFunction()
+        => TestNode<LocalFunctionStatementSyntax>("""
+            class C
+            {
+                void M()
+                {
+                    void MethodLocal()
+                    {
+                        void [|NestedLocal|]() { }
+                    }
+                }
+            }
+            """, """
+            Name="NestedLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestPropertyReturnsLocalFunctions()
+        => TestNode<PropertyDeclarationSyntax>("""
+            class C
+            {
+                public P Prop
+                {
+                    get
+                    {
+                        void [|GetLocal|]() { }
+                        return default;
+                    }
+                    set
+                    {
+                        void [|SetLocal|]() { }
+                    }
+                }
+            }
+            """, """
+            Name="GetLocal() : void" Glyph=MethodPrivate HasItems=False
+            Name="SetLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestConstructorReturnsLocalFunction()
+        => TestNode<ConstructorDeclarationSyntax>("""
+            class C
+            {
+                internal C()
+                {
+                    void [|CtorLocal|]() { }
+                }
+            }
+            """, """
+            Name="CtorLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestDestructorReturnsLocalFunction()
+        => TestNode<DestructorDeclarationSyntax>("""
+            class C
+            {
+                ~C()
+                {
+                    void [|DtorLocal|]() { }
+                }
+            }
+            """, """
+            Name="DtorLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestMethodReturnsLocalFunction()
+        => TestNode<MethodDeclarationSyntax>("""
+            class C
+            {
+                void M<T>(int a)
+                {
+                    void [|MethodLocal|]()
+                    {
+                    }
+                }
+            }
+            """, """
+            Name="MethodLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestOperatorReturnsLocalFunction()
+        => TestNode<OperatorDeclarationSyntax>("""
+            class C
+            {
+                public static C operator +(C c1, int a)
+                {
+                    void [|OperatorLocal|]() { }
+                    return default;
+                }
+            }
+            """, """
+            Name="OperatorLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestConversionOperatorReturnsLocalFunction()
+        => TestNode<ConversionOperatorDeclarationSyntax>("""
+            class C
+            {
+                internal static implicit operator int(C c1)
+                {
+                    void [|ConversionLocal|]() { }
+                    return default;
+                }
+            }
+            """, """
+            Name="ConversionLocal() : void" Glyph=MethodPrivate HasItems=False
+            """);
+
+    [Fact]
+    public Task TestLocalFunctionWithParameters()
+        => TestNode<MethodDeclarationSyntax>("""
+            class C
+            {
+                void M<T>(int a)
+                {
+                    int [|MethodLocal|](string input)
+                    {
+                    }
+                }
+            }
+            """, """
+            Name="MethodLocal(string) : int" Glyph=MethodPrivate HasItems=False
+            """);
+
+    #region Namespace Tests (returnNamespaces: true)
+
+    [Fact]
+    public Task TestBlockNamespace()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|N|]
+            {
+                class C
+                {
+                }
+            }
+            """, """
+            Name="N" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestBlockNamespaceEmpty()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|N|]
+            {
+            }
+            """, """
+            Name="N" Glyph=Namespace HasItems=False
+            """);
+
+    [Fact]
+    public Task TestFileScopedNamespace()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|N|];
+
+            class C
+            {
+            }
+            """, """
+            Name="N" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestFileScopedNamespaceEmpty()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|N|];
+            """, """
+            Name="N" Glyph=Namespace HasItems=False
+            """);
+
+    [Fact]
+    public Task TestMultipleBlockNamespaces()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|N1|]
+            {
+                class C { }
+            }
+
+            namespace [|N2|]
+            {
+                class D { }
+            }
+            """, """
+            Name="N1" Glyph=Namespace HasItems=True
+            Name="N2" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestQualifiedNamespace()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|A|].B.C
+            {
+                class D { }
+            }
+            """, """
+            Name="A.B.C" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestNamespaceNextToTopLevelType()
+        => TestCompilationUnitWithNamespaces("""
+            class [|C|]
+            {
+            }
+
+            namespace [|N|]
+            {
+                class D { }
+            }
+            """, """
+            Name="C" Glyph=ClassInternal HasItems=False
+            Name="N" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestNestedBlockNamespaces()
+        => TestCompilationUnitWithNamespaces("""
+            namespace [|Outer|]
+            {
+                namespace Inner
+                {
+                    class C { }
+                }
+            }
+            """, """
+            Name="Outer" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestNestedNamespaceMembers()
+        => TestNamespaceDeclaration("""
+            namespace Outer
+            {
+                namespace [|Inner|]
+                {
+                    class C { }
+                }
+            }
+            """, """
+            Name="Inner" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestNamespaceMembersWithTypes()
+        => TestNamespaceDeclaration("""
+            namespace N
+            {
+                class [|C|]
+                {
+                }
+
+                struct [|S|]
+                {
+                }
+            }
+            """, """
+            Name="C" Glyph=ClassInternal HasItems=False
+            Name="S" Glyph=StructureInternal HasItems=False
+            """);
+
+    [Fact]
+    public Task TestNamespaceMembersWithNestedNamespaceAndTypes()
+        => TestNamespaceDeclaration("""
+            namespace N
+            {
+                class [|C|]
+                {
+                }
+
+                namespace [|Inner|]
+                {
+                    class D { }
+                }
+            }
+            """, """
+            Name="C" Glyph=ClassInternal HasItems=False
+            Name="Inner" Glyph=Namespace HasItems=True
+            """);
+
+    [Fact]
+    public Task TestFileScopedNamespaceMembers()
+        => TestNamespaceDeclaration("""
+            namespace N;
+
+            class [|C|]
+            {
+            }
+
+            enum [|E|]
+            {
+            }
+            """, """
+            Name="C" Glyph=ClassInternal HasItems=False
+            Name="E" Glyph=EnumInternal HasItems=False
+            """);
+
+    [Fact]
+    public Task TestNamespaceWithDelegateAndEnum()
+        => TestNamespaceDeclaration("""
+            namespace N
+            {
+                delegate void [|D|]();
+
+                enum [|E|]
+                {
+                    A
+                }
+            }
+            """, """
+            Name="D() : void" Glyph=DelegateInternal HasItems=False
+            Name="E" Glyph=EnumInternal HasItems=True
+            """);
+
+    #endregion
 }

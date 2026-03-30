@@ -215,6 +215,13 @@ internal sealed class HelixTestRunner
                 Path.Combine(workItemPayloadDir, rspFileName),
                 GetRspFileContent(assemblyRelativeFilePaths, helixWorkItem.TestMethodNames, platform));
 
+            Directory.CreateSymbolicLink(
+                path: Path.Combine(workItemPayloadDir, "eng"),
+                pathToTarget: Path.Combine(artifactsDir, "..", "eng"));
+            File.CreateSymbolicLink(
+                path: Path.Combine(workItemPayloadDir, "global.json"),
+                pathToTarget: Path.Combine(artifactsDir, "..", "global.json"));
+
             var (commandFileName, commandContent) = GetHelixCommandContent(assemblyRelativeFilePaths, rspFileName, testOS);
             File.WriteAllText(Path.Combine(workItemPayloadDir, commandFileName), commandContent);
 
@@ -227,7 +234,7 @@ internal sealed class HelixTestRunner
                         <PayloadDirectory>{workItemPayloadDir}</PayloadDirectory>
                         <Command>{commandPrefix}{commandFileName}</Command>
                         <PostCommands>{commandPrefix}{postCommandFileName}</PostCommands>
-                        <Timeout>00:30:00</Timeout>
+                        <Timeout>01:00:00</Timeout>
                         <ExpectedExecutionTime>{helixWorkItem.EstimatedExecutionTime}</ExpectedExecutionTime>
                     </HelixWorkItem>
                 """);
@@ -251,14 +258,15 @@ internal sealed class HelixTestRunner
             string[] knownEnvironmentVariables =
             [
                 "ROSLYN_TEST_IOPERATION",
-                "ROSLYN_TEST_USEDASSEMBLIES"
+                "ROSLYN_TEST_USEDASSEMBLIES",
+                "DOTNET_RuntimeAsync"
             ];
 
             foreach (var knownEnvironmentVariable in knownEnvironmentVariables)
             {
                 if (Environment.GetEnvironmentVariable(knownEnvironmentVariable) is string { Length: > 0 } value)
                 {
-                    command.AppendLine($"{setEnvironmentVariable} {knownEnvironmentVariable}=\"{value}\"");
+                    command.AppendLine($"{setEnvironmentVariable} {knownEnvironmentVariable}={value}");
                 }
             }
 
@@ -281,6 +289,8 @@ internal sealed class HelixTestRunner
             command.AppendLine($"{setEnvironmentVariable} DOTNET_DbgMiniDumpName=\"{helixDumpFolder}\"");
 
             command.AppendLine(isUnix ? "env | sort" : "set");
+
+            command.AppendLine("powershell -ExecutionPolicy ByPass -NoProfile -File ./eng/enable-preview-sdks.ps1");
 
             // Rehydrate assemblies that we need to run as part of this work item.
             foreach (var assemblyRelativeFilePath in assemblyRelativeFilePaths)
@@ -421,8 +431,14 @@ internal sealed class HelixTestRunner
         // The xml file must end in test-results.xml for the Azure Pipelines reporter to pick it up.
         builder.AppendLine($@"/Logger:xunit;LogFilePath=work-item-test-results.xml");
 
+        // Also add a console logger so that the helix log reports results as we go.
+        builder.AppendLine($@"/Logger:console;verbosity=detailed");
+
         // Specifies the results directory - this is where dumps from the blame options will get published. 
         builder.AppendLine($"/ResultsDirectory:.");
+
+        var blameOption = "CollectDump;CollectHangDump";
+        builder.AppendLine($"/Blame:{blameOption};TestTimeout=15minutes;DumpType=full");
 
         // Build the filter string
         if (testMethodNames.Any())

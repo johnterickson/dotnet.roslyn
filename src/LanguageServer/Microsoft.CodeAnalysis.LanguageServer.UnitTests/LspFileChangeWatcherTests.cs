@@ -17,7 +17,7 @@ namespace Microsoft.CodeAnalysis.LanguageServer.UnitTests;
 public sealed class LspFileChangeWatcherTests(ITestOutputHelper testOutputHelper)
     : AbstractLanguageServerHostTests(testOutputHelper)
 {
-    private readonly ClientCapabilities _clientCapabilitiesWithFileWatcherSupport = new ClientCapabilities
+    private readonly ClientCapabilities _clientCapabilitiesWithFileWatcherSupport = new()
     {
         Workspace = new WorkspaceClientCapabilities
         {
@@ -102,10 +102,8 @@ public sealed class LspFileChangeWatcherTests(ITestOutputHelper testOutputHelper
         Assert.Empty(dynamicCapabilitiesRpcTarget.Registrations);
     }
 
-    private static async Task WaitForFileWatcherAsync(TestLspServer testLspServer)
-    {
-        await testLspServer.ExportProvider.GetExportedValue<AsynchronousOperationListenerProvider>().GetWaiter(FeatureAttribute.Workspace).ExpeditedWaitAsync();
-    }
+    private static Task WaitForFileWatcherAsync(TestLspServer testLspServer)
+        => testLspServer.ExportProvider.GetExportedValue<AsynchronousOperationListenerProvider>().GetWaiter(FeatureAttribute.Workspace).ExpeditedWaitAsync();
 
     private static FileSystemWatcher GetSingleFileWatcher(DynamicCapabilitiesRpcTarget dynamicCapabilities)
     {
@@ -120,21 +118,17 @@ public sealed class LspFileChangeWatcherTests(ITestOutputHelper testOutputHelper
         public readonly ConcurrentDictionary<string, Registration> Registrations = new();
 
         [JsonRpcMethod("client/registerCapability", UseSingleObjectParameterDeserialization = true)]
-        public Task RegisterCapabilityAsync(RegistrationParams registrationParams, CancellationToken _)
+        public async Task RegisterCapabilityAsync(RegistrationParams registrationParams, CancellationToken _)
         {
             foreach (var registration in registrationParams.Registrations)
                 Assert.True(Registrations.TryAdd(registration.Id, registration));
-
-            return Task.CompletedTask;
         }
 
         [JsonRpcMethod("client/unregisterCapability", UseSingleObjectParameterDeserialization = true)]
-        public Task UnregisterCapabilityAsync(UnregistrationParams unregistrationParams, CancellationToken _)
+        public async Task UnregisterCapabilityAsync(UnregistrationParams unregistrationParams, CancellationToken _)
         {
             foreach (var unregistration in unregistrationParams.Unregistrations)
                 Assert.True(Registrations.TryRemove(unregistration.Id, out var _));
-
-            return Task.CompletedTask;
         }
     }
 }

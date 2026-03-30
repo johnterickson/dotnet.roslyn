@@ -80,13 +80,56 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                     }
 
                     var resourceHintName = Path.GetFileNameWithoutExtension(resourceFile.Path);
-                    var resourceName = resourceHintName;
-                    if (options.TryGetValue("build_metadata.AdditionalFiles.RelativeDir", out var relativeDir))
+                    string defaultResourceAndClassName;
+                    if (options.TryGetValue("build_metadata.AdditionalFiles.Link", out var link) && link.Length > 0)
                     {
-                        resourceName = relativeDir.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.') + resourceName;
+                        resourceHintName = Path.GetFileNameWithoutExtension(link);
+                        string linkRelativeDir = Path.GetDirectoryName(link);
+                        if (linkRelativeDir.Length > 0 && !linkRelativeDir.EndsWith("\\", StringComparison.Ordinal))
+                        {
+                            linkRelativeDir += '\\';
+                        }
+
+                        defaultResourceAndClassName = RelativeDirToName(linkRelativeDir, resourceHintName);
+                    }
+                    else if (options.TryGetValue("build_metadata.AdditionalFiles.RelativeDir", out var relativeDir) && !relativeDir.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relativeDir))
+                    {
+                        defaultResourceAndClassName = RelativeDirToName(relativeDir, resourceHintName);
+                    }
+                    else
+                    {
+                        // This resx file comes from outside the project directory, and there's no Link metadata.
+                        // Treat it like it's in the project directory.
+                        defaultResourceAndClassName = resourceHintName;
                     }
 
-                    options.TryGetValue("build_metadata.AdditionalFiles.ClassName", out var resourceClassName);
+                    static string RelativeDirToName(string relativeDir, string hintName)
+                    {
+                        string candidate = relativeDir.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.') + hintName;
+
+                        // Make sure there are never two periods in a row.
+                        while (candidate.Contains(".."))
+                        {
+                            candidate = candidate.Replace("..", ".");
+                        }
+
+                        return candidate;
+                    }
+
+                    if (!string.IsNullOrEmpty(rootNamespace))
+                    {
+                        defaultResourceAndClassName = $"{rootNamespace}.{defaultResourceAndClassName}";
+                    }
+
+                    if (!options.TryGetValue("build_metadata.AdditionalFiles.ManifestResourceName", out var resourceName) || resourceName.Length == 0)
+                    {
+                        resourceName = defaultResourceAndClassName;
+                    }
+
+                    if (!options.TryGetValue("build_metadata.AdditionalFiles.ClassName", out var resourceClassName) || resourceClassName.Length == 0)
+                    {
+                        resourceClassName = defaultResourceAndClassName;
+                    }
 
                     if (!options.TryGetValue("build_metadata.AdditionalFiles.OmitGetResourceString", out var omitGetResourceStringText)
                         || !bool.TryParse(omitGetResourceStringText, out var omitGetResourceString))
@@ -129,7 +172,7 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                         new ResourceInformation(
                             CompilationInformation: compilationInfo,
                             ResourceFile: resourceFile,
-                            ResourceName: string.IsNullOrEmpty(rootNamespace) ? resourceName : string.Join(".", rootNamespace, resourceName),
+                            ResourceName: resourceName,
                             ResourceHintName: resourceHintName,
                             ResourceClassName: resourceClassName,
                             OmitGetResourceString: omitGetResourceString,
@@ -204,7 +247,7 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                     }
                     catch (Exception ex)
                     {
-                        var exceptionLines = ex.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+                        var exceptionLines = ex.ToString().Split([Environment.NewLine], StringSplitOptions.None);
                         var text = string.Join("", exceptionLines.Select(line => "#error " + line + Environment.NewLine));
                         var errorText = SourceText.From(text, Encoding.UTF8, SourceHashAlgorithm.Sha256);
                         context.AddSource($"{resourceInformation.ResourceHintName}.Error", errorText);
@@ -237,7 +280,7 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="AssemblyName"></param>
         /// <param name="CodeLanguage">Language of source file to generate. Supported languages: CSharp, VisualBasic.</param>
@@ -250,7 +293,7 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
             bool HasNotNullIfNotNull);
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="CompilationInformation">Information about the compilation.</param>
         /// <param name="ResourceFile">Resources (resx) file.</param>
@@ -340,7 +383,9 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                 var result = language switch
                 {
                     Lang.CSharp => $"#error {message}",
-                    Lang.VisualBasic => $"#Error \"{message}\"",
+                    Lang.VisualBasic => $"""
+                    #Error "{message}"
+                    """,
                     _ => message,
                 };
 
@@ -463,7 +508,9 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                         case Lang.VisualBasic:
                             if (ResourceInformation.AsConstants)
                             {
-                                strings.AppendLine($"{memberIndent}Public Const [{identifier}] As String = \"{name}\"");
+                                strings.AppendLine($"""
+                                    {memberIndent}Public Const [{identifier}] As String = "{name}"
+                                    """);
                             }
                             else
                             {
@@ -507,36 +554,48 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                                 getResourceStringAttributes.Add("[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNull(\"defaultValue\")]");
                             }
 
-                            getStringMethod = $@"{memberIndent}public static global::System.Globalization.CultureInfo{(CompilationInformation.SupportsNullable ? "?" : "")} Culture {{ get; set; }}
-{string.Join(Environment.NewLine, getResourceStringAttributes.Select(attr => memberIndent + attr))}
-{memberIndent}internal static {(CompilationInformation.SupportsNullable ? "string?" : "string")} GetResourceString(string resourceKey, {(CompilationInformation.SupportsNullable ? "string?" : "string")} defaultValue = null) =>  ResourceManager.GetString(resourceKey, Culture) ?? defaultValue;";
+                            getStringMethod = $$"""
+                                {{memberIndent}}/// <summary>
+                                {{memberIndent}}///   Overrides the current thread's CurrentUICulture property for all
+                                {{memberIndent}}///   resource lookups using this strongly typed resource class.
+                                {{memberIndent}}/// </summary>
+                                {{memberIndent}}public static global::System.Globalization.CultureInfo{{(CompilationInformation.SupportsNullable ? "?" : "")}} Culture { get; set; }
+                                {{string.Join(Environment.NewLine, getResourceStringAttributes.Select(attr => memberIndent + attr))}}
+                                {{memberIndent}}internal static {{(CompilationInformation.SupportsNullable ? "string?" : "string")}} GetResourceString(string resourceKey, {{(CompilationInformation.SupportsNullable ? "string?" : "string")}} defaultValue = null) =>  ResourceManager.GetString(resourceKey, Culture) ?? defaultValue;
+                                """;
                             if (ResourceInformation.EmitFormatMethods)
                             {
-                                getStringMethod += $@"
+                                getStringMethod += $$"""
 
-{memberIndent}private static string GetResourceString(string resourceKey, string[]? formatterNames)
-{memberIndent}{{
-{memberIndent}   var value = GetResourceString(resourceKey) ?? """";
-{memberIndent}   if (formatterNames != null)
-{memberIndent}   {{
-{memberIndent}       for (var i = 0; i < formatterNames.Length; i++)
-{memberIndent}       {{
-{memberIndent}           value = value.Replace(""{{"" + formatterNames[i] + ""}}"", ""{{"" + i + ""}}"");
-{memberIndent}       }}
-{memberIndent}   }}
-{memberIndent}   return value;
-{memberIndent}}}
-";
+                                    {{memberIndent}}private static string GetResourceString(string resourceKey, string[]? formatterNames)
+                                    {{memberIndent}}{
+                                    {{memberIndent}}   var value = GetResourceString(resourceKey) ?? "";
+                                    {{memberIndent}}   if (formatterNames != null)
+                                    {{memberIndent}}   {
+                                    {{memberIndent}}       for (var i = 0; i < formatterNames.Length; i++)
+                                    {{memberIndent}}       {
+                                    {{memberIndent}}           value = value.Replace("{" + formatterNames[i] + "}", "{" + i + "}");
+                                    {{memberIndent}}       }
+                                    {{memberIndent}}   }
+                                    {{memberIndent}}   return value;
+                                    {{memberIndent}}}
+                                    """;
                             }
 
                             break;
 
                         case Lang.VisualBasic:
-                            getStringMethod = $@"{memberIndent}Public Shared Property Culture As Global.System.Globalization.CultureInfo
-{memberIndent}<Global.System.Runtime.CompilerServices.MethodImpl(Global.System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
-{memberIndent}Friend Shared Function GetResourceString(ByVal resourceKey As String, Optional ByVal defaultValue As String = Nothing) As String
-{memberIndent}    Return ResourceManager.GetString(resourceKey, Culture)
-{memberIndent}End Function";
+                            getStringMethod = $"""
+                                {memberIndent}''' <summary>
+                                {memberIndent}'''   Overrides the current thread's CurrentUICulture property for all
+                                {memberIndent}'''   resource lookups using this strongly typed resource class.
+                                {memberIndent}''' </summary>
+                                {memberIndent}Public Shared Property Culture As Global.System.Globalization.CultureInfo
+                                {memberIndent}<Global.System.Runtime.CompilerServices.MethodImpl(Global.System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+                                {memberIndent}Friend Shared Function GetResourceString(ByVal resourceKey As String, Optional ByVal defaultValue As String = Nothing) As String
+                                {memberIndent}    Return ResourceManager.GetString(resourceKey, Culture)
+                                {memberIndent}End Function
+                                """;
                             if (ResourceInformation.EmitFormatMethods)
                             {
                                 throw new NotImplementedException();
@@ -573,55 +632,6 @@ namespace Microsoft.CodeAnalysis.ResxSourceGenerator
                     }
                 }
 
-                string resourceTypeName;
-                string? resourceTypeDefinition;
-                if (string.IsNullOrEmpty(ResourceInformation.ResourceClassName) || ResourceInformation.ResourceName == ResourceInformation.ResourceClassName)
-                {
-                    // resource name is same as accessor, no need for a second type.
-                    resourceTypeName = className;
-                    resourceTypeDefinition = null;
-                }
-                else
-                {
-                    // resource name differs from the access class, need a type for specifying the resources
-                    // this empty type must remain as it is required by the .NETNative toolchain for locating resources
-                    // once assemblies have been merged into the application
-                    resourceTypeName = ResourceInformation.ResourceName;
-
-                    SplitName(resourceTypeName, out var resourceNamespaceName, out var resourceClassName);
-                    var resourceClassIndent = resourceNamespaceName == null ? "" : "    ";
-
-                    switch (language)
-                    {
-                        case Lang.CSharp:
-                            resourceTypeDefinition = $"{resourceClassIndent}internal static class {resourceClassName} {{ }}";
-                            if (resourceNamespaceName != null)
-                            {
-                                resourceTypeDefinition = $@"namespace {resourceNamespaceName}
-{{
-{resourceTypeDefinition}
-}}";
-                            }
-
-                            break;
-
-                        case Lang.VisualBasic:
-                            resourceTypeDefinition = $@"{resourceClassIndent}Friend Class {resourceClassName}
-{resourceClassIndent}End Class";
-                            if (resourceNamespaceName != null)
-                            {
-                                resourceTypeDefinition = $@"Namespace {resourceNamespaceName}
-{resourceTypeDefinition}
-End Namespace";
-                            }
-
-                            break;
-
-                        default:
-                            throw new InvalidOperationException();
-                    }
-                }
-
                 // List of NoWarn
                 string? noWarnDisabled = null;
                 string? noWarnRestored = null;
@@ -651,52 +661,71 @@ End Namespace";
                 // completely remove the ResourceManager class if the disk space saving optimization to strip resources
                 // (/DisableExceptionMessages) is turned on in the compiler.
                 string result;
+                string resourceManagerArguments;
                 switch (language)
                 {
                     case Lang.CSharp:
-                        result = $@"// <auto-generated/>{noWarnDisabled}
+                        resourceManagerArguments = ResourceInformation.ResourceName == ResourceInformation.ResourceClassName
+                            ? $"typeof({className})"
+                            : $"\"{ResourceInformation.ResourceName}\", typeof({className}).Assembly";
+                        result = $$"""
+                            // <auto-generated/>{{noWarnDisabled}}
 
-{(CompilationInformation.SupportsNullable ? "#nullable enable" : "")}
-using System.Reflection;
+                            {{(CompilationInformation.SupportsNullable ? "#nullable enable" : "")}}
+                            using System.Reflection;
 
-{resourceTypeDefinition}
-{namespaceStart}
-{classIndent}{(ResourceInformation.Public ? "public" : "internal")} static partial class {className}
-{classIndent}{{
-{memberIndent}private static global::System.Resources.ResourceManager{(CompilationInformation.SupportsNullable ? "?" : "")} s_resourceManager;
-{memberIndent}public static global::System.Resources.ResourceManager ResourceManager => s_resourceManager ?? (s_resourceManager = new global::System.Resources.ResourceManager(typeof({resourceTypeName})));
-{getStringMethod}
-{strings}
-{classIndent}}}
-{namespaceEnd}{noWarnRestored}
-";
+                            {{namespaceStart}}
+                            {{classIndent}}/// <summary>
+                            {{classIndent}}///   A strongly-typed resource class, for looking up localized strings, etc.
+                            {{classIndent}}/// </summary>
+                            {{classIndent}}{{(ResourceInformation.Public ? "public" : "internal")}} static partial class {{className}}
+                            {{classIndent}}{
+                            {{memberIndent}}private static global::System.Resources.ResourceManager{{(CompilationInformation.SupportsNullable ? "?" : "")}} s_resourceManager;
+                            {{memberIndent}}/// <summary>
+                            {{memberIndent}}///   Returns the cached ResourceManager instance used by this class.
+                            {{memberIndent}}/// </summary>
+                            {{memberIndent}}public static global::System.Resources.ResourceManager ResourceManager => s_resourceManager ?? (s_resourceManager = new global::System.Resources.ResourceManager({{resourceManagerArguments}}));
+                            {{getStringMethod}}
+                            {{strings}}
+                            {{classIndent}}}
+                            {{namespaceEnd}}{{noWarnRestored}}
+                            """;
                         break;
 
                     case Lang.VisualBasic:
-                        result = $@"' <auto-generated/>{noWarnDisabled}
+                        resourceManagerArguments = ResourceInformation.ResourceName == ResourceInformation.ResourceClassName
+                            ? $"GetType({className})"
+                            : $"\"{ResourceInformation.ResourceName}\", GetType({className}).Assembly";
+                        result = $"""
+                            ' <auto-generated/>{noWarnDisabled}
 
-Imports System.Reflection
+                            Imports System.Reflection
 
-{resourceTypeDefinition}
-{namespaceStart}
-{classIndent}{(ResourceInformation.Public ? "Public" : "Friend")} Partial Class {className}
-{memberIndent}Private Sub New
-{memberIndent}End Sub
-{memberIndent}
-{memberIndent}Private Shared s_resourceManager As Global.System.Resources.ResourceManager
-{memberIndent}Public Shared ReadOnly Property ResourceManager As Global.System.Resources.ResourceManager
-{memberIndent}    Get
-{memberIndent}        If s_resourceManager Is Nothing Then
-{memberIndent}            s_resourceManager = New Global.System.Resources.ResourceManager(GetType({resourceTypeName}))
-{memberIndent}        End If
-{memberIndent}        Return s_resourceManager
-{memberIndent}    End Get
-{memberIndent}End Property
-{getStringMethod}
-{strings}
-{classIndent}End Class
-{namespaceEnd}{noWarnRestored}
-";
+                            {namespaceStart}
+                            {classIndent}''' <summary>
+                            {classIndent}'''   A strongly-typed resource class, for looking up localized strings, etc.
+                            {classIndent}''' </summary>
+                            {classIndent}{(ResourceInformation.Public ? "Public" : "Friend")} Partial Class {className}
+                            {memberIndent}Private Sub New
+                            {memberIndent}End Sub
+                            {memberIndent}
+                            {memberIndent}Private Shared s_resourceManager As Global.System.Resources.ResourceManager
+                            {memberIndent}''' <summary>
+                            {memberIndent}'''   Returns the cached ResourceManager instance used by this class.
+                            {memberIndent}''' </summary>
+                            {memberIndent}Public Shared ReadOnly Property ResourceManager As Global.System.Resources.ResourceManager
+                            {memberIndent}    Get
+                            {memberIndent}        If s_resourceManager Is Nothing Then
+                            {memberIndent}            s_resourceManager = New Global.System.Resources.ResourceManager({resourceManagerArguments})
+                            {memberIndent}        End If
+                            {memberIndent}        Return s_resourceManager
+                            {memberIndent}    End Get
+                            {memberIndent}End Property
+                            {getStringMethod}
+                            {strings}
+                            {classIndent}End Class
+                            {namespaceEnd}{noWarnRestored}
+                            """;
                         break;
 
                     default:
@@ -768,7 +797,7 @@ Imports System.Reflection
 
                 var escapedTrimmedValue = new XElement("summary", value).ToString();
 
-                foreach (var line in escapedTrimmedValue.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                foreach (var line in escapedTrimmedValue.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
                 {
                     strings.Append(memberIndent).Append(docCommentStart).Append(' ');
                     strings.AppendLine(line);
@@ -817,7 +846,7 @@ Imports System.Reflection
 
             private static void RenderFormatMethod(string indent, Lang language, bool supportsNullable, StringBuilder strings, ResourceString resourceString)
             {
-                strings.AppendLine($"{indent}internal static string Format{resourceString.Name}({resourceString.GetMethodParameters(language, supportsNullable)})");
+                strings.AppendLine($"{indent}public static string Format{resourceString.Name}({resourceString.GetMethodParameters(language, supportsNullable)})");
                 if (resourceString.UsingNamedArgs)
                 {
                     strings.AppendLine($@"{indent}   => string.Format(Culture, GetResourceString(""{resourceString.Name}"", new[] {{ {resourceString.GetArgumentNames()} }}), {resourceString.GetArguments()});");
@@ -868,7 +897,11 @@ Imports System.Reflection
 
                 public bool HasArguments => _arguments.Count > 0;
 
-                public string GetArgumentNames() => string.Join(", ", _arguments.Select(a => "\"" + a + "\""));
+                public string GetArgumentNames() => string.Join(", ", _arguments.Select(a => """
+                "
+                """ + a + """
+                "
+                """));
 
                 public string GetArguments() => string.Join(", ", _arguments.Select(GetArgName));
 

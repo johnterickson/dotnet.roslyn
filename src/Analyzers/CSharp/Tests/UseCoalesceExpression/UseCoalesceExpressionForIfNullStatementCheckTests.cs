@@ -20,9 +20,8 @@ using VerifyCS = CSharpCodeFixVerifier<
 public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
 {
     [Fact]
-    public async Task TestLocalDeclaration_ThrowStatement()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_ThrowStatement()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -49,12 +48,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_Block()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_Block()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -83,12 +80,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_IsPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_IsPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -115,12 +110,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_Assignment1()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_Assignment1()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -147,12 +140,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_Assignment2()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_Assignment2()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -180,12 +171,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithWrongItemChecked()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithWrongItemChecked()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -201,12 +190,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithWrongCondition()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithWrongCondition()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -222,12 +209,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithWrongPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithWrongPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -244,12 +229,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithWrongAssignment()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithWrongAssignment()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -265,12 +248,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithElseBlock()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithElseBlock()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -288,12 +269,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithMultipleWhenTrueStatements()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithMultipleWhenTrueStatements()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -312,12 +291,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithNoWhenTrueStatements()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithNoWhenTrueStatements()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -334,12 +311,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithThrowWithoutExpression()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithThrowWithoutExpression()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -361,12 +336,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithLocalWithoutInitializer()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithLocalWithoutInitializer()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -382,12 +355,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithValueTypeInitializer()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithValueTypeInitializer()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -403,12 +374,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestLocalDeclaration_NotWithReferenceToVariableInThrow()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NotWithReferenceToVariableInThrow()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -425,12 +394,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/74460")]
-    public async Task TestLocalDeclaration_CastWithParenthesizedExpression()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_CastWithParenthesizedExpression()
+        => new VerifyCS.Test
         {
             TestCode =
             """
@@ -473,12 +440,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/74460")]
-    public async Task TestLocalDeclaration_CastWithoutParenthesizedExpression()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_CastWithoutParenthesizedExpression()
+        => new VerifyCS.Test
         {
             TestCode =
             """
@@ -521,12 +486,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/74460")]
-    public async Task TestLocalDeclaration_NoCastWhenEqualSymbol()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NoCastWhenEqualSymbol()
+        => new VerifyCS.Test
         {
             TestCode =
             """
@@ -561,12 +524,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/74460")]
-    public async Task TestLocalDeclaration_NoCastWhenDerivedClass()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NoCastWhenDerivedClass()
+        => new VerifyCS.Test
         {
             TestCode =
             """
@@ -609,12 +570,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/74460")]
-    public async Task TestLocalDeclaration_NoCastWhenDerivedClassReversed()
-    {
-        await new VerifyCS.Test
+    public Task TestLocalDeclaration_NoCastWhenDerivedClassReversed()
+        => new VerifyCS.Test
         {
             TestCode =
             """
@@ -657,12 +616,10 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
             }
             """
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/70514")]
-    public async Task TestNotAcrossPreprocessorRegion()
-    {
-        await new VerifyCS.Test
+    public Task TestNotAcrossPreprocessorRegion()
+        => new VerifyCS.Test
         {
             TestCode = """
                 #define DEBUG
@@ -682,5 +639,397 @@ public sealed class UseCoalesceExpressionForIfNullStatementCheckTests
                 }
                 """,
         }.RunAsync();
-    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81987")]
+    public Task TestPointer1_A()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                unsafe void M()
+                {
+                    var item = FindItem();
+                    if (item == null)
+                        throw new System.InvalidOperationException();
+                }
+
+                unsafe int* FindItem() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81987")]
+    public Task TestPointer1_B()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                unsafe void M(int* item)
+                {
+                    item = FindItem();
+                    if (item == null)
+                        throw new System.InvalidOperationException();
+                }
+
+                unsafe int* FindItem() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81987")]
+    public Task TestPointer2_A()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                unsafe void M()
+                {
+                    var item = FindItem();
+                    if (item == null)
+                        throw new System.InvalidOperationException();
+                }
+
+                unsafe void* FindItem() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81987")]
+    public Task TestPointer2_B()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                unsafe void M(void* item)
+                {
+                    item = FindItem();
+                    if (item == null)
+                        throw new System.InvalidOperationException();
+                }
+
+                unsafe void* FindItem() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82037")]
+    public Task TestNotOfferedWithDirectivesOnIfStatement_LeadingPragma()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            #nullable enable
+            class C
+            {
+                public void M()
+                {
+            #pragma warning disable
+                    var value = M2();
+                    // Test
+            #pragma warning restore
+                    if (value == null)
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string? M2() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82037")]
+    public Task TestNotOfferedWithDirectivesOnIfStatement_LeadingRegion()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            #nullable enable
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+            #region Test
+                    if (value == null)
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+            #endregion
+                }
+
+                string? M2() => null;
+            }
+            """
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82037")]
+    public Task TestPreprocessorInBlock1()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            #nullable enable
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+                    if (value == null)
+                    {
+            #if true
+                        throw new System.InvalidOperationException();
+            #endif
+                    }
+                }
+
+                string? M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82037")]
+    public Task TestPreprocessorInBlock2()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            #nullable enable
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+                    if (value == null)
+                    {
+            #if false
+                        throw new System.InvalidOperationException();
+            #endif
+                    }
+                }
+
+                string? M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove1()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+
+                    // Comment
+                    [|if|] (value == null)
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove2()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+
+                    [|if|] (value == null)
+                    {
+                        // Comment
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove3()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    var value = M2();
+
+                    // Comment2
+                    [|if|] (value == null)
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    // Comment2
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove4()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    var value = M2();
+
+                    [|if|] (value == null)
+                    {
+                        // Comment2
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    // Comment2
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove5()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    var value = M2();
+            
+                    // Comment1
+                    [|if|] (value == null)
+                    {
+                        // Comment2
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    // Comment2
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/82060")]
+    public Task TestCommentMove6()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    var value = M2();
+            
+                    // Comment2
+                    [|if|] (value == null)
+                    {
+                        // Comment3
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                string M2() => null;
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                public void M()
+                {
+                    // Comment1
+                    // Comment2
+                    // Comment3
+                    var value = M2() ?? throw new System.InvalidOperationException();
+                }
+            
+                string M2() => null;
+            }
+            """,
+        }.RunAsync();
 }

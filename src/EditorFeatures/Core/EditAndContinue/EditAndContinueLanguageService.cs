@@ -21,8 +21,7 @@ using Roslyn.Utilities;
 namespace Microsoft.CodeAnalysis.EditAndContinue;
 
 [Shared]
-[Export(typeof(IManagedHotReloadLanguageService))]
-[Export(typeof(IManagedHotReloadLanguageService2))]
+[Export(typeof(IManagedHotReloadLanguageService3))]
 [Export(typeof(IEditAndContinueSolutionProvider))]
 [Export(typeof(EditAndContinueLanguageService))]
 [ExportMetadata("UIContext", EditAndContinueUIContext.EncCapableProjectExistsInWorkspaceUIContextString)]
@@ -34,7 +33,7 @@ internal sealed class EditAndContinueLanguageService(
     Lazy<IManagedHotReloadService> debuggerService,
     PdbMatchingSourceTextProvider sourceTextProvider,
     IEditAndContinueLogReporter logReporter,
-    IDiagnosticsRefresher diagnosticRefresher) : IManagedHotReloadLanguageService2, IEditAndContinueSolutionProvider
+    IDiagnosticsRefresher diagnosticRefresher) : IManagedHotReloadLanguageService3, IEditAndContinueSolutionProvider
 {
     private sealed class NoSessionException : InvalidOperationException
     {
@@ -49,8 +48,8 @@ internal sealed class EditAndContinueLanguageService(
     private bool _disabled;
     private RemoteDebuggingSessionProxy? _debuggingSession;
 
-    private Solution? _pendingUpdatedDesignTimeSolution;
-    private Solution? _committedDesignTimeSolution;
+    private Solution? _pendingUpdatedSolution;
+    private Solution? _committedSolution;
 
     public event Action<Solution>? SolutionCommitted;
 
@@ -73,11 +72,8 @@ internal sealed class EditAndContinueLanguageService(
     private SolutionServices Services
         => workspaceProvider.Value.Workspace.Services.SolutionServices;
 
-    private Solution GetCurrentDesignTimeSolution()
+    private Solution GetCurrentSolution()
         => workspaceProvider.Value.Workspace.CurrentSolution;
-
-    private Solution GetCurrentCompileTimeSolution(Solution currentDesignTimeSolution)
-        => Services.GetRequiredService<ICompileTimeSolutionProvider>().GetCompileTimeSolution(currentDesignTimeSolution);
 
     private RemoteDebuggingSessionProxy GetDebuggingSession()
         => _debuggingSession ?? throw new NoSessionException();
@@ -115,20 +111,17 @@ internal sealed class EditAndContinueLanguageService(
             // so that we don't miss any pertinent workspace update events.
             sourceTextProvider.Activate();
 
-            var currentSolution = GetCurrentDesignTimeSolution();
-            _committedDesignTimeSolution = currentSolution;
-            var solution = GetCurrentCompileTimeSolution(currentSolution);
+            var currentSolution = GetCurrentSolution();
+            _committedSolution = currentSolution;
 
             sourceTextProvider.SetBaseline(currentSolution);
 
             var proxy = new RemoteEditAndContinueServiceProxy(Services);
 
             _debuggingSession = await proxy.StartDebuggingSessionAsync(
-                solution,
+                currentSolution,
                 new ManagedHotReloadServiceBridge(debuggerService.Value),
                 sourceTextProvider,
-                captureMatchingDocuments: [],
-                captureAllMatchingDocuments: false,
                 reportDiagnostics: true,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -158,7 +151,7 @@ internal sealed class EditAndContinueLanguageService(
         try
         {
             var session = GetDebuggingSession();
-            var solution = (inBreakState == true) ? GetCurrentCompileTimeSolution(GetCurrentDesignTimeSolution()) : null;
+            var solution = (inBreakState == true) ? GetCurrentSolution() : null;
 
             await session.BreakStateOrCapabilitiesChangedAsync(inBreakState, cancellationToken).ConfigureAwait(false);
 
@@ -194,18 +187,18 @@ internal sealed class EditAndContinueLanguageService(
             return;
         }
 
-        var committedDesignTimeSolution = Interlocked.Exchange(ref _pendingUpdatedDesignTimeSolution, null);
-        Contract.ThrowIfNull(committedDesignTimeSolution);
+        var committedSolution = Interlocked.Exchange(ref _pendingUpdatedSolution, null);
+        Contract.ThrowIfNull(committedSolution);
 
         try
         {
-            SolutionCommitted?.Invoke(committedDesignTimeSolution);
+            SolutionCommitted?.Invoke(committedSolution);
         }
         catch (Exception e) when (FatalError.ReportAndCatch(e))
         {
         }
 
-        _committedDesignTimeSolution = committedDesignTimeSolution;
+        _committedSolution = committedSolution;
 
         try
         {
@@ -225,7 +218,7 @@ internal sealed class EditAndContinueLanguageService(
             return;
         }
 
-        Contract.ThrowIfNull(Interlocked.Exchange(ref _pendingUpdatedDesignTimeSolution, null));
+        Contract.ThrowIfNull(Interlocked.Exchange(ref _pendingUpdatedSolution, null));
 
         try
         {
@@ -236,59 +229,9 @@ internal sealed class EditAndContinueLanguageService(
         }
     }
 
-    public async ValueTask UpdateBaselinesAsync(ImmutableArray<string> projectPaths, CancellationToken cancellationToken)
-    {
-        if (_disabled)
-        {
-            return;
-        }
-
-        var currentDesignTimeSolution = GetCurrentDesignTimeSolution();
-        var currentCompileTimeSolution = GetCurrentCompileTimeSolution(currentDesignTimeSolution);
-
-        try
-        {
-            SolutionCommitted?.Invoke(currentDesignTimeSolution);
-        }
-        catch (Exception e) when (FatalError.ReportAndCatch(e))
-        {
-        }
-
-        _committedDesignTimeSolution = currentDesignTimeSolution;
-        var projectIds = GetProjectIds(projectPaths, currentCompileTimeSolution);
-
-        try
-        {
-            await GetDebuggingSession().UpdateBaselinesAsync(currentCompileTimeSolution, projectIds, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (FatalError.ReportAndCatchUnlessCanceled(e, cancellationToken))
-        {
-        }
-
-        foreach (var projectId in projectIds)
-        {
-            workspaceProvider.Value.Workspace.EnqueueUpdateSourceGeneratorVersion(projectId, forceRegeneration: false);
-        }
-    }
-
-    private ImmutableArray<ProjectId> GetProjectIds(ImmutableArray<string> projectPaths, Solution solution)
-    {
-        using var _ = ArrayBuilder<ProjectId>.GetInstance(out var projectIds);
-        foreach (var path in projectPaths)
-        {
-            var projectId = solution.Projects.FirstOrDefault(project => project.FilePath == path)?.Id;
-            if (projectId != null)
-            {
-                projectIds.Add(projectId);
-            }
-            else
-            {
-                logReporter.Report($"Project with path '{path}' not found in the current solution.", LogMessageSeverity.Info);
-            }
-        }
-
-        return projectIds.ToImmutable();
-    }
+    [Obsolete]
+    public ValueTask UpdateBaselinesAsync(ImmutableArray<string> projectPaths, CancellationToken cancellationToken)
+        => throw new NotImplementedException();
 
     public async ValueTask EndSessionAsync(CancellationToken cancellationToken)
     {
@@ -311,8 +254,8 @@ internal sealed class EditAndContinueLanguageService(
 
         sourceTextProvider.Deactivate();
         _debuggingSession = null;
-        _committedDesignTimeSolution = null;
-        _pendingUpdatedDesignTimeSolution = null;
+        _committedSolution = null;
+        _pendingUpdatedSolution = null;
     }
 
     private ActiveStatementSpanProvider GetActiveStatementSpanProvider(Solution solution)
@@ -343,9 +286,9 @@ internal sealed class EditAndContinueLanguageService(
                 return false;
             }
 
-            Contract.ThrowIfNull(_committedDesignTimeSolution);
-            var oldSolution = _committedDesignTimeSolution;
-            var newSolution = GetCurrentDesignTimeSolution();
+            Contract.ThrowIfNull(_committedSolution);
+            var oldSolution = _committedSolution;
+            var newSolution = GetCurrentSolution();
 
             return (sourceFilePath != null)
                 ? await EditSession.HasChangesAsync(oldSolution, newSolution, sourceFilePath, cancellationToken).ConfigureAwait(false)
@@ -359,43 +302,44 @@ internal sealed class EditAndContinueLanguageService(
 
     [Obsolete]
     public ValueTask<ManagedHotReloadUpdates> GetUpdatesAsync(CancellationToken cancellationToken)
-        => GetUpdatesAsync(runningProjects: [], cancellationToken);
+        => throw new NotImplementedException();
 
-    public async ValueTask<ManagedHotReloadUpdates> GetUpdatesAsync(ImmutableArray<string> runningProjects, CancellationToken cancellationToken)
+    [Obsolete]
+    public ValueTask<ManagedHotReloadUpdates> GetUpdatesAsync(ImmutableArray<string> runningProjects, CancellationToken cancellationToken)
+    {
+        // StreamJsonRpc may use this overload when the method is invoked with empty parameters. Call the new implementation instead.
+
+        if (!runningProjects.IsEmpty)
+            throw new NotImplementedException();
+
+        return GetUpdatesAsync(ImmutableArray<RunningProjectInfo>.Empty, cancellationToken);
+    }
+
+    public async ValueTask<ManagedHotReloadUpdates> GetUpdatesAsync(ImmutableArray<RunningProjectInfo> runningProjects, CancellationToken cancellationToken)
     {
         if (_disabled)
         {
             return new ManagedHotReloadUpdates([], []);
         }
 
-        var designTimeSolution = GetCurrentDesignTimeSolution();
-        var solution = GetCurrentCompileTimeSolution(designTimeSolution);
+        var solution = GetCurrentSolution();
         var activeStatementSpanProvider = GetActiveStatementSpanProvider(solution);
+        var runningProjectOptions = runningProjects.ToRunningProjectOptions(solution, static info => (info.ProjectInstanceId.ProjectFilePath, info.ProjectInstanceId.TargetFramework, info.RestartAutomatically));
 
-        using var _ = PooledHashSet<string>.GetInstance(out var runningProjectPaths);
-        runningProjectPaths.AddAll(runningProjects);
-
-        // TODO: Update once implemented: https://devdiv.visualstudio.com/DevDiv/_workitems/edit/2449700
-        var runningProjectInfos = solution.Projects.Where(p => p.FilePath != null && runningProjectPaths.Contains(p.FilePath)).ToImmutableDictionary(
-            keySelector: static p => p.Id,
-            elementSelector: static p => new RunningProjectInfo { RestartWhenChangesHaveNoEffect = false, AllowPartialUpdate = false });
-
-        var result = await GetDebuggingSession().EmitSolutionUpdateAsync(solution, runningProjectInfos, activeStatementSpanProvider, cancellationToken).ConfigureAwait(false);
+        var result = await GetDebuggingSession().EmitSolutionUpdateAsync(solution, runningProjectOptions, activeStatementSpanProvider, cancellationToken).ConfigureAwait(false);
 
         switch (result.ModuleUpdates.Status)
         {
-            case ModuleUpdateStatus.Ready when result.ProjectsToRebuild.IsEmpty:
-                // We have updates to be applied and no rude edits.
-                //
+            case ModuleUpdateStatus.Ready:
                 // The debugger will call Commit/Discard on the solution
                 // based on whether the updates will be applied successfully or not.
-                _pendingUpdatedDesignTimeSolution = designTimeSolution;
+                _pendingUpdatedSolution = solution;
                 break;
 
             case ModuleUpdateStatus.None:
                 // No significant changes have been made.
                 // Commit the solution to apply any changes in comments that do not generate updates.
-                _committedDesignTimeSolution = designTimeSolution;
+                _committedSolution = solution;
                 break;
         }
 
@@ -422,10 +366,14 @@ internal sealed class EditAndContinueLanguageService(
         return new ManagedHotReloadUpdates(
             result.ModuleUpdates.Updates.FromContract(),
             result.GetAllDiagnostics().FromContract(),
-            GetProjectPaths(result.ProjectsToRebuild),
-            GetProjectPaths(result.ProjectsToRestart.Keys));
+            ToProjectIntanceIds(result.ProjectsToRebuild),
+            ToProjectIntanceIds(result.ProjectsToRestart.Keys));
 
-        ImmutableArray<string> GetProjectPaths(IEnumerable<ProjectId> ids)
-            => ids.SelectAsArray(id => solution.GetRequiredProject(id).FilePath!);
+        ImmutableArray<ProjectInstanceId> ToProjectIntanceIds(IEnumerable<ProjectId> ids)
+            => ids.SelectAsArray(id =>
+            {
+                var project = solution.GetRequiredProject(id);
+                return new ProjectInstanceId(project.FilePath!, project.State.NameAndFlavor.flavor ?? "");
+            });
     }
 }

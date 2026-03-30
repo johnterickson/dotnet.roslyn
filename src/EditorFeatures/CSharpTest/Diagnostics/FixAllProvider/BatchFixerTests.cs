@@ -85,7 +85,7 @@ public sealed partial class BatchFixerTests : AbstractCSharpDiagnosticProviderBa
 
                 // Disable RS0005 as this is test code and we don't need telemetry for created code action.
 #pragma warning disable RS0005 // Do not use generic CodeAction.Create to create CodeAction
-                var fix = CodeAction.Create("QualifyWithThisFix", _ => Task.FromResult(newDocument));
+                var fix = CodeAction.Create("QualifyWithThisFix", async _ => newDocument);
 #pragma warning restore RS0005 // Do not use generic CodeAction.Create to create CodeAction
 
                 context.RegisterCodeFix(fix, context.Diagnostics);
@@ -100,9 +100,8 @@ public sealed partial class BatchFixerTests : AbstractCSharpDiagnosticProviderBa
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/320")]
     [Trait(Traits.Feature, Traits.Features.CodeActionsFixAllOccurrences)]
-    public async Task TestFixAllInDocument_QualifyWithThis()
-    {
-        var input = """
+    public Task TestFixAllInDocument_QualifyWithThis()
+        => TestInRegularAndScriptAsync("""
             <Workspace>
                 <Project Language="C#" AssemblyName="Assembly1" CommonReferences="true">
                     <Document>
@@ -127,9 +126,7 @@ public sealed partial class BatchFixerTests : AbstractCSharpDiagnosticProviderBa
                     </Document>
                 </Project>
             </Workspace>
-            """;
-
-        var expected = """
+            """, """
             <Workspace>
                 <Project Language="C#" AssemblyName="Assembly1" CommonReferences="true">
                     <Document>
@@ -154,10 +151,7 @@ public sealed partial class BatchFixerTests : AbstractCSharpDiagnosticProviderBa
                     </Document>
                 </Project>
             </Workspace>
-            """;
-
-        await TestInRegularAndScriptAsync(input, expected);
-    }
+            """);
 
     #endregion
 }

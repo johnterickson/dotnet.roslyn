@@ -48,22 +48,10 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
     private readonly AsyncLazy<VersionStamp> _lazyLatestDocumentVersion;
     private readonly AsyncLazy<VersionStamp> _lazyLatestDocumentTopLevelChangeVersion;
 
-    // Checksums for this solution state (access via LazyChecksums)
-    private AsyncLazy<ProjectStateChecksums>? _lazyChecksums;
-
-    // Mapping from content has to document id (access via LazyContentHashToDocumentId)
-    private AsyncLazy<Dictionary<ImmutableArray<byte>, DocumentId>>? _lazyContentHashToDocumentId;
-
     /// <summary>
     /// Analyzer config options to be used for specific trees.
     /// </summary>
     private readonly AnalyzerConfigOptionsCache _analyzerConfigOptionsCache;
-
-    private ImmutableArray<AdditionalText> _lazyAdditionalFiles;
-
-    private AnalyzerOptions? _lazyProjectAnalyzerOptions;
-
-    private AnalyzerOptions? _lazyHostAnalyzerOptions;
 
     private ProjectState(
         ProjectInfo projectInfo,
@@ -156,31 +144,32 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
     {
         get
         {
-            if (_lazyChecksums is null)
+            if (field is null)
             {
                 Interlocked.CompareExchange(
-                    ref _lazyChecksums,
+                    ref field,
                     AsyncLazy.Create(static (self, cancellationToken) => self.ComputeChecksumsAsync(cancellationToken), arg: this),
                     null);
             }
 
-            return _lazyChecksums;
+            return field;
         }
     }
 
+    // Mapping from content has to document id (access via LazyContentHashToDocumentId)
     private AsyncLazy<Dictionary<ImmutableArray<byte>, DocumentId>> LazyContentHashToDocumentId
     {
         get
         {
-            if (_lazyContentHashToDocumentId is null)
+            if (field is null)
             {
                 Interlocked.CompareExchange(
-                    ref _lazyContentHashToDocumentId,
+                    ref field,
                     AsyncLazy.Create(static (self, cancellationToken) => self.ComputeContentHashToDocumentIdAsync(cancellationToken), arg: this),
                     null);
             }
 
-            return _lazyContentHashToDocumentId;
+            return field;
         }
     }
 
@@ -327,7 +316,7 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
         get
         {
             return InterlockedOperations.Initialize(
-                ref _lazyAdditionalFiles,
+                ref field,
                 static self => self.AdditionalDocumentStates.SelectAsArray(static documentState => documentState.AdditionalText),
                 this);
         }
@@ -335,19 +324,21 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
 
     public AnalyzerOptions ProjectAnalyzerOptions
         => InterlockedOperations.Initialize(
-            ref _lazyProjectAnalyzerOptions,
+            ref field,
             static self => new AnalyzerOptions(
                 additionalFiles: self.AdditionalFiles,
                 optionsProvider: new ProjectAnalyzerConfigOptionsProvider(self)),
             this);
 
     public AnalyzerOptions HostAnalyzerOptions
-        => InterlockedOperations.Initialize(
-            ref _lazyHostAnalyzerOptions,
+    {
+        get => InterlockedOperations.Initialize(
+            ref field,
             static self => new AnalyzerOptions(
                 additionalFiles: self.AdditionalFiles,
                 optionsProvider: new ProjectHostAnalyzerConfigOptionsProvider(self)),
-            this);
+            this); private set;
+    }
 
     public AnalyzerConfigData GetAnalyzerOptionsForPath(string path, CancellationToken cancellationToken)
         => _analyzerConfigOptionsCache.Lazy.GetValue(cancellationToken).GetOptionsForSourcePath(path);
@@ -385,6 +376,39 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
         return GetAnalyzerOptionsForPath(sourceFilePath, CancellationToken.None);
     }
 
+    private static string? GetEffectiveFilePath(DocumentState documentState, ProjectState projectState)
+    {
+        if (documentState.Id.IsSourceGenerated)
+        {
+            // Source generated document file paths should not be used to lookup
+            // analyzer config options as they do not actually exist on disk.
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(documentState.FilePath))
+        {
+            return documentState.FilePath;
+        }
+
+        // We need to work out path to this document. Documents may not have a "real" file path if they're something created
+        // as a part of a code action, but haven't been written to disk yet.
+
+        var projectFilePath = projectState.FilePath;
+
+        if (documentState.Name != null && projectFilePath != null)
+        {
+            var projectPath = PathUtilities.GetDirectoryName(projectFilePath);
+
+            if (!RoslynString.IsNullOrEmpty(projectPath) &&
+                PathUtilities.GetDirectoryName(projectFilePath) is string directory)
+            {
+                return PathUtilities.CombinePathsUnchecked(directory, documentState.Name);
+            }
+        }
+
+        return null;
+    }
+
     internal sealed class ProjectAnalyzerConfigOptionsProvider(ProjectState projectState) : AnalyzerConfigOptionsProvider
     {
         private AnalyzerConfigOptionsCache.Value GetCache()
@@ -413,7 +437,7 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
 
         private StructuredAnalyzerConfigOptions GetOptions(in AnalyzerConfigOptionsCache.Value cache, DocumentState documentState)
         {
-            var filePath = GetEffectiveFilePath(documentState);
+            var filePath = GetEffectiveFilePath(documentState, projectState);
             return filePath == null
                 ? StructuredAnalyzerConfigOptions.Empty
                 : GetOptionsForSourcePath(cache, filePath);
@@ -427,32 +451,6 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
 
         private static StructuredAnalyzerConfigOptions GetOptionsForSourcePath(in AnalyzerConfigOptionsCache.Value cache, string path)
             => cache.GetOptionsForSourcePath(path).ConfigOptionsWithoutFallback;
-
-        private string? GetEffectiveFilePath(DocumentState documentState)
-        {
-            if (!string.IsNullOrEmpty(documentState.FilePath))
-            {
-                return documentState.FilePath;
-            }
-
-            // We need to work out path to this document. Documents may not have a "real" file path if they're something created
-            // as a part of a code action, but haven't been written to disk yet.
-
-            var projectFilePath = projectState.FilePath;
-
-            if (documentState.Name != null && projectFilePath != null)
-            {
-                var projectPath = PathUtilities.GetDirectoryName(projectFilePath);
-
-                if (!RoslynString.IsNullOrEmpty(projectPath) &&
-                    PathUtilities.GetDirectoryName(projectFilePath) is string directory)
-                {
-                    return PathUtilities.CombinePathsUnchecked(directory, documentState.Name);
-                }
-            }
-
-            return null;
-        }
     }
 
     internal sealed class ProjectHostAnalyzerConfigOptionsProvider(ProjectState projectState) : AnalyzerConfigOptionsProvider
@@ -492,7 +490,7 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
                 return _lazyRazorDesignTimeOptions ??= new RazorDesignTimeAnalyzerConfigOptions(services);
             }
 
-            var filePath = GetEffectiveFilePath(documentState);
+            var filePath = GetEffectiveFilePath(documentState, projectState);
             return filePath == null
                 ? StructuredAnalyzerConfigOptions.Empty
                 : GetOptionsForSourcePath(cache, filePath);
@@ -506,32 +504,6 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
 
         private static StructuredAnalyzerConfigOptions GetOptionsForSourcePath(in AnalyzerConfigOptionsCache.Value cache, string path)
             => cache.GetOptionsForSourcePath(path).ConfigOptionsWithFallback;
-
-        private string? GetEffectiveFilePath(DocumentState documentState)
-        {
-            if (!string.IsNullOrEmpty(documentState.FilePath))
-            {
-                return documentState.FilePath;
-            }
-
-            // We need to work out path to this document. Documents may not have a "real" file path if they're something created
-            // as a part of a code action, but haven't been written to disk yet.
-
-            var projectFilePath = projectState.FilePath;
-
-            if (documentState.Name != null && projectFilePath != null)
-            {
-                var projectPath = PathUtilities.GetDirectoryName(projectFilePath);
-
-                if (!RoslynString.IsNullOrEmpty(projectPath) &&
-                    PathUtilities.GetDirectoryName(projectFilePath) is string directory)
-                {
-                    return PathUtilities.CombinePathsUnchecked(directory, documentState.Name);
-                }
-            }
-
-            return null;
-        }
     }
 
     /// <summary>
@@ -595,6 +567,15 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
 
         public override bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity)
         {
+            var state = DocumentState.GetDocumentIdForTree(tree);
+            if (state?.IsSourceGenerated == true)
+            {
+                // While source generated files have file paths, they do not exist on disk
+                // and .editorconfig files should not apply to them based on that path.
+                severity = ReportDiagnostic.Default;
+                return false;
+            }
+
             var options = _lazyAnalyzerConfigSet.Lazy
                 .GetValue(cancellationToken).GetOptionsForSourcePath(tree.FilePath);
             return options.TreeOptions.TryGetValue(diagnosticId, out severity);
@@ -1136,11 +1117,13 @@ internal sealed partial class ProjectState : IComparable<ProjectState>
         this.AnalyzerConfigDocumentStates.AddDocumentIdsWithFilePath(ref temporaryArray, filePath);
     }
 
-    public DocumentId? GetFirstDocumentIdWithFilePath(string filePath)
+    /// <summary>
+    /// Returns the first <see cref="DocumentId"/> from this project that matches this path. This only checks for regular documents,
+    /// and does not check for additional documents or .editorconfig documents.
+    /// </summary>
+    public DocumentId? GetFirstSourceDocumentIdWithFilePath(string filePath)
     {
-        return this.DocumentStates.GetFirstDocumentIdWithFilePath(filePath) ??
-            this.AdditionalDocumentStates.GetFirstDocumentIdWithFilePath(filePath) ??
-            this.AnalyzerConfigDocumentStates.GetFirstDocumentIdWithFilePath(filePath);
+        return this.DocumentStates.GetFirstDocumentIdWithFilePath(filePath);
     }
 
     public int CompareTo(ProjectState? other)

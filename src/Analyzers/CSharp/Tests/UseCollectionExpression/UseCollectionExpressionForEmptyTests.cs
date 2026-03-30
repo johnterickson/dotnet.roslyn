@@ -19,22 +19,9 @@ using VerifyCS = CSharpCodeFixVerifier<
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseCollectionExpression)]
 public sealed class UseCollectionExpressionForEmptyTests
 {
-    private const string CollectionBuilderAttributeDefinition = """
-
-        namespace System.Runtime.CompilerServices
-        {
-            [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = false)]
-            public sealed class CollectionBuilderAttribute : Attribute
-            {
-                public CollectionBuilderAttribute(Type builderType, string methodName) { }
-            }
-        }
-        """;
-
     [Fact]
-    public async Task ArrayEmpty1()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty1()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -49,12 +36,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty2()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty2()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -80,12 +65,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty2_A()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty2_A()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -111,12 +94,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty3()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty3()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -140,12 +121,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty3_Strict()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty3_Strict()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -163,12 +142,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 dotnet_style_prefer_collection_expression=when_types_exactly_match
                 """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty5_InterfacesOn()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty5_InterfacesOn()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -196,12 +173,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty5_InterfacesOff()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty5_InterfacesOff()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -221,12 +196,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 dotnet_style_prefer_collection_expression=when_types_exactly_match
                 """
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty6()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty6()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -252,12 +225,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty7()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty7()
+        => new VerifyCS.Test
         {
             TestCode = """
             #nullable enable
@@ -285,12 +256,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty8()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty8()
+        => new VerifyCS.Test
         {
             TestCode = """
             #nullable enable
@@ -318,12 +287,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty9()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty9()
+        => new VerifyCS.Test
         {
             TestCode = """
             #nullable enable
@@ -351,12 +318,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ArrayEmpty10()
-    {
-        await new VerifyCS.Test
+    public Task ArrayEmpty10()
+        => new VerifyCS.Test
         {
             TestCode = """
             #nullable enable
@@ -384,12 +349,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestCast()
-    {
-        await new VerifyCS.Test
+    public Task TestCast()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -415,12 +378,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestIdentifierCast()
-    {
-        await new VerifyCS.Test
+    public Task TestIdentifierCast()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -436,12 +397,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestTrivia()
-    {
-        await new VerifyCS.Test
+    public Task TestTrivia()
+        => new VerifyCS.Test
         {
             TestCode = """
             #nullable enable
@@ -469,12 +428,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestNonCollection()
-    {
-        await new VerifyCS.Test
+    public Task TestNonCollection()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -494,12 +451,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestProperty1()
-    {
-        await new VerifyCS.Test
+    public Task TestProperty1()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -551,14 +506,12 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestBuilder1()
-    {
-        await new VerifyCS.Test
+    public Task TestBuilder1()
+        => new VerifyCS.Test
         {
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net70,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net100,
             TestCode = """
             using System;
             using System.Collections;
@@ -587,7 +540,7 @@ public sealed class UseCollectionExpressionForEmptyTests
             {
                 public static MyList<T> Create<T>(ReadOnlySpan<T> values) => default;
             }
-            """ + CollectionBuilderAttributeDefinition,
+            """,
             FixedCode = """
             using System;
             using System.Collections;
@@ -616,17 +569,15 @@ public sealed class UseCollectionExpressionForEmptyTests
             {
                 public static MyList<T> Create<T>(ReadOnlySpan<T> values) => default;
             }
-            """ + CollectionBuilderAttributeDefinition,
+            """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestBuilder2()
-    {
-        await new VerifyCS.Test
+    public Task TestBuilder2()
+        => new VerifyCS.Test
         {
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net70,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net100,
             TestCode = """
             using System;
             using System.Collections;
@@ -655,7 +606,7 @@ public sealed class UseCollectionExpressionForEmptyTests
             {
                 public static MyList<T> Create<T>(ReadOnlySpan<T> values, int x) => default;
             }
-            """ + CollectionBuilderAttributeDefinition,
+            """,
             FixedCode = """
             using System;
             using System.Collections;
@@ -684,15 +635,13 @@ public sealed class UseCollectionExpressionForEmptyTests
             {
                 public static MyList<T> Create<T>(ReadOnlySpan<T> values, int x) => default;
             }
-            """ + CollectionBuilderAttributeDefinition,
+            """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task ReadOnlySpan1()
-    {
-        await new VerifyCS.Test
+    public Task ReadOnlySpan1()
+        => new VerifyCS.Test
         {
             ReferenceAssemblies = ReferenceAssemblies.Net.Net70,
             TestCode = """
@@ -719,12 +668,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task NotForImmutableArrayNet70()
-    {
-        await new VerifyCS.Test
+    public Task NotForImmutableArrayNet70()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -741,12 +688,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net70,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task ForImmutableArrayNet80()
-    {
-        await new VerifyCS.Test
+    public Task ForImmutableArrayNet80()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -775,12 +720,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task NotForImmutableListNet70()
-    {
-        await new VerifyCS.Test
+    public Task NotForImmutableListNet70()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -797,12 +740,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net70,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task ForImmutableListNet80()
-    {
-        await new VerifyCS.Test
+    public Task ForImmutableListNet80()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -831,12 +772,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task NotForValueTypeWithoutNoArgConstructorAndWithoutCollectionBuilderAttribute()
-    {
-        await new VerifyCS.Test
+    public Task NotForValueTypeWithoutNoArgConstructorAndWithoutCollectionBuilderAttribute()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -864,12 +803,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
-    public async Task NotForValueTypeWithOneArgConstructorAndWithoutCollectionBuilderAttribute()
-    {
-        await new VerifyCS.Test
+    public Task NotForValueTypeWithOneArgConstructorAndWithoutCollectionBuilderAttribute()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -899,7 +836,6 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69507")]
     public async Task ForValueTypeWithCapacityConstructor()
@@ -1246,9 +1182,8 @@ public sealed class UseCollectionExpressionForEmptyTests
     }
 
     [Fact]
-    public async Task TestNotWhenChildOfInvocation()
-    {
-        await new VerifyCS.Test
+    public Task TestNotWhenChildOfInvocation()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1267,12 +1202,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestGlobalStatement()
-    {
-        await new VerifyCS.Test
+    public Task TestGlobalStatement()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -1290,14 +1223,12 @@ public sealed class UseCollectionExpressionForEmptyTests
                 OutputKind = OutputKind.ConsoleApplication,
             },
         }.RunAsync();
-    }
 
     [Theory]
     [InlineData("\n")]
     [InlineData("\r\n")]
-    public async Task TestWithDifferentNewLines(string endOfLine)
-    {
-        await new VerifyCS.Test
+    public Task TestWithDifferentNewLines(string endOfLine)
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1317,12 +1248,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 OutputKind = OutputKind.ConsoleApplication,
             },
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForSpanField()
-    {
-        await new VerifyCS.Test
+    public Task TestForSpanField()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1351,12 +1280,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForSpanProperty1()
-    {
-        await new VerifyCS.Test
+    public Task TestForSpanProperty1()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1381,12 +1308,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForSpanProperty2()
-    {
-        await new VerifyCS.Test
+    public Task TestForSpanProperty2()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1411,12 +1336,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForSpanProperty3()
-    {
-        await new VerifyCS.Test
+    public Task TestForSpanProperty3()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1441,12 +1364,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForMethodReturn()
-    {
-        await new VerifyCS.Test
+    public Task TestForMethodReturn()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1471,12 +1392,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForMethodLocal1()
-    {
-        await new VerifyCS.Test
+    public Task TestForMethodLocal1()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1507,12 +1426,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestForArgument()
-    {
-        await new VerifyCS.Test
+    public Task TestForArgument()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1547,12 +1464,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71012")]
-    public async Task TestInLambda()
-    {
-        await new VerifyCS.Test
+    public Task TestInLambda()
+        => new VerifyCS.Test
         {
             TestCode =
                 """
@@ -1584,12 +1499,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71012")]
-    public async Task TestNotInLambda1()
-    {
-        await new VerifyCS.Test
+    public Task TestNotInLambda1()
+        => new VerifyCS.Test
         {
             TestCode =
                 """
@@ -1607,12 +1520,10 @@ public sealed class UseCollectionExpressionForEmptyTests
                 """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71012")]
-    public async Task TestNotInExpressionTree()
-    {
-        await new VerifyCS.Test
+    public Task TestNotInExpressionTree()
+        => new VerifyCS.Test
         {
             TestCode =
                 """
@@ -1630,14 +1541,12 @@ public sealed class UseCollectionExpressionForEmptyTests
                 """,
             LanguageVersion = LanguageVersion.CSharp12,
         }.RunAsync();
-    }
 
     [Theory, CombinatorialData, WorkItem("https://github.com/dotnet/roslyn/issues/70996")]
-    public async Task TestInterfaceOn(
+    public Task TestInterfaceOn(
         [CombinatorialValues("IEnumerable<int>", "IReadOnlyCollection<int>", "IReadOnlyList<int>")] string type,
         [CombinatorialValues("Array.[|Empty|]<int>()", "ImmutableArray<int>.[|Empty|]")] string expression)
-    {
-        await new VerifyCS.Test
+        => new VerifyCS.Test
         {
             TestCode = $$"""
                 using System;
@@ -1668,14 +1577,12 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Theory, CombinatorialData, WorkItem("https://github.com/dotnet/roslyn/issues/70996")]
-    public async Task TestInterfaceOn_ReadWriteDestination(
+    public Task TestInterfaceOn_ReadWriteDestination(
         [CombinatorialValues("IList<int>", "ICollection<int>")] string type,
         [CombinatorialValues("Array.Empty<int>()", "ImmutableArray<int>.Empty")] string expression)
-    {
-        await new VerifyCS.Test
+        => new VerifyCS.Test
         {
             TestCode = $$"""
                 using System;
@@ -1693,12 +1600,10 @@ public sealed class UseCollectionExpressionForEmptyTests
             LanguageVersion = LanguageVersion.CSharp12,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/70996")]
-    public async Task TestInterfaceOff()
-    {
-        await new VerifyCS.Test
+    public Task TestInterfaceOff()
+        => new VerifyCS.Test
         {
             TestCode = """
                 using System;
@@ -1718,5 +1623,4 @@ public sealed class UseCollectionExpressionForEmptyTests
                 dotnet_style_prefer_collection_expression=when_types_exactly_match
                 """
         }.RunAsync();
-    }
 }

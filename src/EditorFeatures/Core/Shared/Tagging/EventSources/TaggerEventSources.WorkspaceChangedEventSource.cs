@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.CodeAnalysis.Threading;
 using Microsoft.VisualStudio.Text;
@@ -26,10 +27,9 @@ internal partial class TaggerEventSources
             // only process a tag change once.
             _asyncDelay = new AsyncBatchingWorkQueue(
                 DelayTimeSpan.Short,
-                processBatchAsync: cancellationToken =>
+                processBatchAsync: async cancellationToken =>
                 {
                     RaiseChanged();
-                    return ValueTaskFactory.CompletedTask;
                 },
                 asyncListener,
                 CancellationToken.None);

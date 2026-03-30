@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -165,20 +166,17 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
         return service;
     }
 
-    internal async Task<DebuggingSession> StartDebuggingSessionAsync(
+    internal DebuggingSession StartDebuggingSession(
         EditAndContinueService service,
         Solution solution,
         CommittedSolution.DocumentState initialState = CommittedSolution.DocumentState.MatchesBuildOutput,
         IPdbMatchingSourceTextProvider? sourceTextProvider = null)
     {
-        var sessionId = await service.StartDebuggingSessionAsync(
+        var sessionId = service.StartDebuggingSession(
             solution,
             _debuggerService,
             sourceTextProvider: sourceTextProvider ?? NullPdbMatchingSourceTextProvider.Instance,
-            captureMatchingDocuments: [],
-            captureAllMatchingDocuments: false,
-            reportDiagnostics: true,
-            CancellationToken.None);
+            reportDiagnostics: true);
 
         var session = service.GetTestAccessor().GetDebuggingSession(sessionId);
 
@@ -219,28 +217,14 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
     internal static void EndDebuggingSession(DebuggingSession session)
         => session.EndSession(out _);
 
-    internal static async Task<(ModuleUpdates updates, ImmutableArray<DiagnosticData> diagnostics)> EmitSolutionUpdateAsync(
-        DebuggingSession session,
-        Solution solution,
-        ActiveStatementSpanProvider? activeStatementSpanProvider = null)
-    {
-        var runningProjects = solution.ProjectIds.ToImmutableDictionary(
-            keySelector: id => id,
-            elementSelector: id => new RunningProjectInfo() { AllowPartialUpdate = false, RestartWhenChangesHaveNoEffect = false });
-
-        var result = await session.EmitSolutionUpdateAsync(solution, runningProjects, activeStatementSpanProvider ?? s_noActiveSpans, CancellationToken.None);
-        return (result.ModuleUpdates, result.Diagnostics.OrderBy(d => d.ProjectId.DebugName).ToImmutableArray().ToDiagnosticData(solution));
-    }
-
     internal static async ValueTask<EmitSolutionUpdateResults> EmitSolutionUpdateAsync(
         DebuggingSession session,
         Solution solution,
-        bool allowPartialUpdate,
         ActiveStatementSpanProvider? activeStatementSpanProvider = null)
     {
         var runningProjects = solution.ProjectIds.ToImmutableDictionary(
             keySelector: id => id,
-            elementSelector: id => new RunningProjectInfo() { AllowPartialUpdate = allowPartialUpdate, RestartWhenChangesHaveNoEffect = false });
+            elementSelector: id => new RunningProjectOptions() { RestartWhenChangesHaveNoEffect = false });
 
         var results = await session.EmitSolutionUpdateAsync(solution, runningProjects, activeStatementSpanProvider ?? s_noActiveSpans, CancellationToken.None);
 
@@ -249,26 +233,14 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
         Assert.Equal(hasTransientError, results.ProjectsToRestart.Any());
         Assert.Equal(hasTransientError, results.ProjectsToRebuild.Any());
 
-        if (!allowPartialUpdate)
-        {
-            // No updates should be produced if transient error is reported:
-            Assert.True(!hasTransientError || results.ModuleUpdates.Updates.IsEmpty);
-        }
-
         return results;
     }
 
-    internal static IEnumerable<string> InspectDiagnostics(ImmutableArray<DiagnosticData> actual)
-        => actual.Select(InspectDiagnostic);
-
-    internal static string InspectDiagnostic(DiagnosticData diagnostic)
-        => $"{(string.IsNullOrWhiteSpace(diagnostic.DataLocation.MappedFileSpan.Path) ? diagnostic.ProjectId.ToString() : diagnostic.DataLocation.MappedFileSpan.ToString())}: {diagnostic.Severity} {diagnostic.Id}: {diagnostic.Message}";
-
     internal static IEnumerable<string> InspectDiagnostics(ImmutableArray<ProjectDiagnostics> actual)
-        => actual.SelectMany(pd => pd.Diagnostics.Select(d => $"{pd.ProjectId.DebugName}: {InspectDiagnostic(d)}"));
+        => actual.SelectMany(pd => pd.Diagnostics.Select(d => $"{pd.ProjectId.DebugName}: {InspectDiagnostic(d)}")).Order();
 
     internal static IEnumerable<string> InspectDiagnostics(ImmutableArray<(ProjectId project, ImmutableArray<Diagnostic> diagnostics)> diagnostics)
-        => diagnostics.SelectMany(pd => pd.diagnostics.Select(d => $"{pd.project.DebugName}: {InspectDiagnostic(d)}"));
+        => diagnostics.SelectMany(pd => pd.diagnostics.Select(d => $"{pd.project.DebugName}: {InspectDiagnostic(d)}")).Order();
 
     internal static string InspectDiagnostic(Diagnostic actual)
         => $"{Inspect(actual.Location)}: {actual.Severity} {actual.Id}: {actual.GetMessage()}";
@@ -305,12 +277,15 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
     internal Guid EmitAndLoadLibraryToDebuggee(
         ProjectId projectId,
         string source,
+        string language = LanguageNames.CSharp,
         string? sourceFilePath = null,
         Encoding? encoding = null,
+        string? assemblyName = null,
+        DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb,
         SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
-        string assemblyName = "",
+        Encoding? defaultEncoding = null,
         TargetFramework targetFramework = DefaultTargetFramework)
-        => LoadLibraryToDebuggee(EmitLibrary(projectId, source, sourceFilePath, encoding, checksumAlgorithm, assemblyName, targetFramework: targetFramework));
+        => LoadLibraryToDebuggee(EmitLibrary(projectId, source, sourceFilePath, language, encoding, assemblyName, pdbFormat, checksumAlgorithm, defaultEncoding, targetFramework: targetFramework));
 
     internal Guid LoadLibraryToDebuggee(Guid moduleId, ManagedHotReloadAvailability availability = default)
     {
@@ -322,6 +297,7 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
         => EmitLibrary(
             project.Id,
             project.Documents.Select(d => (d.GetTextSynchronously(CancellationToken.None), d.FilePath ?? throw ExceptionUtilities.UnexpectedValue(null))),
+            project.Language,
             project.AssemblyName,
             targetFramework: targetFramework);
 
@@ -329,10 +305,12 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
         ProjectId projectId,
         string source,
         string? sourceFilePath = null,
+        string language = LanguageNames.CSharp,
         Encoding? encoding = null,
-        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
-        string assemblyName = "",
+        string? assemblyName = null,
         DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb,
+        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
+        Encoding? defaultEncoding = null,
         Project? generatorProject = null,
         string? additionalFileText = null,
         IEnumerable<(string, string)>? analyzerOptions = null,
@@ -340,10 +318,12 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
         => EmitLibrary(
             projectId,
             [(source, sourceFilePath ?? Path.Combine(TempRoot.Root, "test1.cs"))],
+            language,
             encoding,
-            checksumAlgorithm,
             assemblyName,
             pdbFormat,
+            checksumAlgorithm,
+            defaultEncoding,
             generatorProject,
             additionalFileText,
             analyzerOptions,
@@ -352,68 +332,126 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
     internal Guid EmitLibrary(
         ProjectId projectId,
         (string content, string filePath)[] sources,
+        string language = LanguageNames.CSharp,
         Encoding? encoding = null,
-        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
-        string assemblyName = "",
+        string? assemblyName = null,
         DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb,
+        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
+        Encoding? defaultEncoding = null,
         Project? generatorProject = null,
         string? additionalFileText = null,
         IEnumerable<(string, string)>? analyzerOptions = null,
         TargetFramework targetFramework = DefaultTargetFramework)
     {
-        encoding ??= Encoding.UTF8;
-
         return EmitLibrary(
             projectId,
-            sources.Select(source => (SourceText.From(new MemoryStream(encoding.GetBytesWithPreamble(source.content.ToString())), encoding, checksumAlgorithm), source.filePath)),
+            sources.Select(source => (CreateText(source.content, encoding, checksumAlgorithm), source.filePath)),
+            language,
             assemblyName,
             pdbFormat,
+            checksumAlgorithm,
+            defaultEncoding,
             generatorProject,
             additionalFileText,
             analyzerOptions,
             targetFramework);
     }
 
+    internal static SourceText CreateText(string source, Encoding? encoding = null, SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default)
+    {
+        encoding ??= Encoding.UTF8;
+        return SourceText.From(new MemoryStream(encoding.GetBytesWithPreamble(source)), encoding, checksumAlgorithm);
+    }
+
     internal Guid EmitLibrary(
         ProjectId projectId,
         IEnumerable<(SourceText text, string filePath)> sources,
-        string assemblyName = "",
+        string language = LanguageNames.CSharp,
+        string? assemblyName = null,
         DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb,
+        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
+        Encoding? defaultEncoding = null,
         Project? generatorProject = null,
         string? additionalFileText = null,
         IEnumerable<(string, string)>? analyzerOptions = null,
         TargetFramework targetFramework = DefaultTargetFramework)
     {
-        var parseOptions = TestOptions.RegularPreview.WithNoRefSafetyRulesAttribute();
+        Compilation compilation;
+        CSharpParseOptions? csParseOptions = null;
+        VisualBasic.VisualBasicParseOptions? vbParseOptions = null;
 
-        var trees = sources.Select(source => SyntaxFactory.ParseSyntaxTree(source.text, parseOptions, source.filePath));
+        var references = TargetFrameworkUtil.GetReferences(targetFramework);
+        assemblyName ??= "TestAssembly";
 
-        Compilation compilation = CSharpTestBase.CreateCompilation(trees.ToArray(), options: TestOptions.DebugDll, targetFramework: targetFramework, assemblyName: assemblyName);
+        if (language == LanguageNames.CSharp)
+        {
+            csParseOptions = TestOptions.RegularPreview.WithNoRefSafetyRulesAttribute();
+            var trees = sources.Select(source => SyntaxFactory.ParseSyntaxTree(source.text, csParseOptions, source.filePath));
+            compilation = CSharpCompilation.Create(assemblyName, trees, references, TestOptions.DebugDll);
+        }
+        else
+        {
+            vbParseOptions = VisualBasic.UnitTests.TestOptions.Regular;
+            var trees = sources.Select(source => VisualBasic.SyntaxFactory.ParseSyntaxTree(source.text, vbParseOptions, source.filePath));
+            compilation = VisualBasic.VisualBasicCompilation.Create(assemblyName, trees, references, VisualBasic.UnitTests.TestOptions.DebugDll);
+        }
 
         if (generatorProject != null)
         {
             var generators = generatorProject.AnalyzerReferences.SelectMany(r => r.GetGenerators(language: generatorProject.Language));
+            var driverOptions = new GeneratorDriverOptions(baseDirectory: generatorProject.CompilationOutputInfo.GetEffectiveGeneratedFilesOutputDirectory());
 
             var optionsProvider = (analyzerOptions != null) ? new EditAndContinueTestAnalyzerConfigOptionsProvider(analyzerOptions) : null;
             var additionalTexts = (additionalFileText != null) ? new[] { new InMemoryAdditionalText("additional_file", additionalFileText) } : null;
-            var generatorDriver = CSharpGeneratorDriver.Create(
-                generators,
-                additionalTexts,
-                parseOptions,
-                optionsProvider,
-                driverOptions: new GeneratorDriverOptions(baseDirectory: generatorProject.CompilationOutputInfo.GetEffectiveGeneratedFilesOutputDirectory()!));
+
+            GeneratorDriver generatorDriver;
+            if (language == LanguageNames.CSharp)
+            {
+                generatorDriver = CSharpGeneratorDriver.Create(
+                    generators,
+                    additionalTexts,
+                    csParseOptions,
+                    optionsProvider,
+                    driverOptions);
+            }
+            else
+            {
+                generatorDriver = VisualBasic.VisualBasicGeneratorDriver.Create(
+                    [.. generators],
+                    additionalTexts.ToImmutableArrayOrEmpty<AdditionalText>(),
+                    vbParseOptions,
+                    optionsProvider,
+                    driverOptions);
+            }
 
             generatorDriver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var generatorDiagnostics);
             generatorDiagnostics.Verify();
             compilation = outputCompilation;
         }
 
-        return EmitLibrary(projectId, compilation, pdbFormat);
+        return EmitLibrary(projectId, compilation, pdbFormat, checksumAlgorithm, defaultEncoding);
     }
 
-    internal Guid EmitLibrary(ProjectId projectId, Compilation compilation, DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb)
+    internal Guid EmitLibrary(
+        ProjectId projectId,
+        Compilation compilation,
+        DebugInformationFormat pdbFormat = DebugInformationFormat.PortablePdb,
+        SourceHashAlgorithm checksumAlgorithm = SourceHashAlgorithms.Default,
+        Encoding? defaultEncoding = null)
     {
-        var (peImage, pdbImage) = compilation.EmitToArrays(new EmitOptions(debugInformationFormat: pdbFormat));
+        var hashAlgorithmName = checksumAlgorithm switch
+        {
+            SourceHashAlgorithm.Sha1 => HashAlgorithmName.SHA1,
+            SourceHashAlgorithm.Sha256 => HashAlgorithmName.SHA256,
+            _ => throw ExceptionUtilities.UnexpectedValue(checksumAlgorithm),
+        };
+
+        var (peImage, pdbImage) = compilation.EmitToArrays(new EmitOptions(debugInformationFormat: pdbFormat, pdbChecksumAlgorithm: hashAlgorithmName, defaultSourceFileEncoding: defaultEncoding));
+
+        var dir = Temp.CreateDirectory();
+        dir.CreateFile(compilation.AssemblyName + ".dll").WriteAllBytes(peImage.ToArray());
+        dir.CreateFile(compilation.AssemblyName + ".pdb").WriteAllBytes(pdbImage.ToArray());
+
         var symReader = SymReaderTestHelpers.OpenDummySymReader(pdbImage);
 
         var moduleMetadata = ModuleMetadata.CreateFromImage(peImage);
@@ -456,7 +494,7 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
     }
 
     internal static TextSpan GetSpan(string str, string substr)
-        => new TextSpan(str.IndexOf(substr), substr.Length);
+        => new(str.IndexOf(substr), substr.Length);
 
     internal static void VerifyReadersDisposed(IEnumerable<IDisposable> readers)
     {
@@ -470,7 +508,7 @@ public abstract class EditAndContinueWorkspaceTestBase : TestBase, IDisposable
                 }
                 else
                 {
-                    ((DebugInformationReaderProvider)reader).CreateEditAndContinueMethodDebugInfoReader();
+                    ((DebugInformationReaderProvider)reader).CreateEditAndContinueDebugInfoReader();
                 }
             });
         }

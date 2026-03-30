@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis.Collections;
+using Microsoft.CodeAnalysis.CSharp.Emit;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Roslyn.Utilities;
 
@@ -210,6 +211,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override bool HasCompilerLoweringPreserveAttribute => false;
 
+        internal override bool IsUnionTypeCore => false;
+
 #if !DEBUG
         void Cci.IReference.Dispatch(Cci.MetadataVisitor visitor)
         {
@@ -300,6 +303,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return false;
         }
 
+        internal sealed override string? ExtensionGroupingName => null;
+
+        internal sealed override string? ExtensionMarkerName => null;
+
         private sealed class NativeIntegerTypeMap : AbstractTypeMap
         {
             private readonly NativeIntegerTypeSymbol _type;
@@ -355,6 +362,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override ImmutableArray<TypeParameterSymbol> TypeParameters => ImmutableArray<TypeParameterSymbol>.Empty;
 
+        public override bool IsAsync => UnderlyingMethod.IsAsync;
+
+        internal sealed override ThreeState RuntimeAsyncMethodGenerationAttributeSetting => throw ExceptionUtilities.Unreachable();
+
         public override ImmutableArray<ParameterSymbol> Parameters
         {
             get
@@ -366,6 +377,20 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 }
                 return _lazyParameters;
             }
+        }
+
+        internal override bool TryGetThisParameter(out ParameterSymbol? thisParameter)
+        {
+            if (UnderlyingMethod.TryGetThisParameter(out ParameterSymbol? underlyingThisParameter))
+            {
+                thisParameter = underlyingThisParameter != null
+                    ? new ThisParameterSymbol(this, _container)
+                    : null;
+                return true;
+            }
+
+            thisParameter = null;
+            return false;
         }
 
         public override ImmutableArray<MethodSymbol> ExplicitInterfaceImplementations => ImmutableArray<MethodSymbol>.Empty;
@@ -405,6 +430,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int TryGetOverloadResolutionPriority()
             => UnderlyingMethod.TryGetOverloadResolutionPriority();
+
+        internal override void AddSynthesizedAttributes(PEModuleBuilder moduleBuilder, ref ArrayBuilder<CSharpAttributeData> attributes)
+            => throw ExceptionUtilities.Unreachable();
     }
 
     internal sealed class NativeIntegerParameterSymbol : WrappedParameterSymbol
@@ -447,6 +475,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         public override bool Equals(Symbol? other, TypeCompareKind comparison) => NativeIntegerTypeSymbol.EqualsHelper(this, other, comparison, symbol => symbol._underlyingParameter);
 
         public override int GetHashCode() => _underlyingParameter.GetHashCode();
+
+        internal sealed override void AddSynthesizedAttributes(PEModuleBuilder moduleBuilder, ref ArrayBuilder<CSharpAttributeData> attributes)
+            => throw ExceptionUtilities.Unreachable();
 
 #if !DEBUG
         void Cci.IReference.Dispatch(Cci.MetadataVisitor visitor)

@@ -25,30 +25,26 @@ namespace Microsoft.CodeAnalysis.UnitTests;
 public sealed class BatchFixAllProviderTests
 {
     [Fact]
-    public async Task TestDefaultSelectionNestedFixers()
-    {
-
-        // Three CodeFixProviders provide three actions
-        await new CSharpTest([[1], [2], [3]], nested: true)
+    public Task TestDefaultSelectionNestedFixers()
+        => new CSharpTest([[1], [2], [3]], nested: true)
         {
-            TestCode = @"
-class TestClass {
-  int field = [|0|];
-}
-",
-            FixedCode = $@"
-class TestClass {{
-  int field = 1;
-}}
-",
+            TestCode = """
+            class TestClass {
+              int field = [|0|];
+            }
+            """,
+            FixedCode = $$"""
+            class TestClass {
+              int field = 1;
+            }
+            """,
         }.RunAsync();
-    }
 
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     private sealed class LiteralZeroAnalyzer : DiagnosticAnalyzer
     {
         internal static readonly DiagnosticDescriptor Descriptor =
-            new DiagnosticDescriptor("LiteralZero", "title", "message", "category", DiagnosticSeverity.Warning, isEnabledByDefault: true);
+            new("LiteralZero", "title", "message", "category", DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor];
 
@@ -86,7 +82,7 @@ class TestClass {{
 
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
-        public override Task RegisterCodeFixesAsync(CodeFixContext context)
+        public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             foreach (var diagnostic in context.Diagnostics)
             {
@@ -109,8 +105,6 @@ class TestClass {{
                     context.RegisterCodeFix(fix, diagnostic);
                 }
             }
-
-            return Task.CompletedTask;
         }
 
         private static async Task<Document> CreateChangedDocument(Document document, TextSpan sourceSpan, int replacement, CancellationToken cancellationToken)

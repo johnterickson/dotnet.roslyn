@@ -720,25 +720,36 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     EmitExpression(argument, true);
                     break;
 
-                case RefKind.In:
-                    var temp = EmitAddress(argument, AddressKind.ReadOnly);
-                    AddExpressionTemp(temp);
-                    break;
-
                 default:
-                    Debug.Assert(refKind is RefKind.Ref or RefKind.Out or RefKindExtensions.StrictIn);
-                    // NOTE: passing "ReadOnlyStrict" here. 
-                    //       we should not get an address of a copy if at all possible
-                    var unexpectedTemp = EmitAddress(argument, refKind == RefKindExtensions.StrictIn ? AddressKind.ReadOnlyStrict : AddressKind.Writeable);
-                    if (unexpectedTemp != null)
+                    Debug.Assert(refKind is RefKind.In or RefKind.Ref or RefKind.Out or RefKindExtensions.StrictIn);
+                    var temp = EmitAddress(argument, GetArgumentAddressKind(refKind));
+                    if (temp != null)
                     {
                         // interestingly enough "ref dynamic" sometimes is passed via a clone
                         // receiver of a ref field can be cloned too
-                        Debug.Assert(argument.Type.IsDynamic() || argument is BoundFieldAccess { FieldSymbol.RefKind: not RefKind.None }, "passing args byref should not clone them into temps");
-                        AddExpressionTemp(unexpectedTemp);
+                        Debug.Assert(refKind is RefKind.In || argument.Type.IsDynamic() || argument is BoundFieldAccess { FieldSymbol.RefKind: not RefKind.None }, "passing args byref should not clone them into temps");
+                        AddExpressionTemp(temp);
                     }
 
                     break;
+            }
+        }
+
+        internal static AddressKind GetArgumentAddressKind(RefKind refKind)
+        {
+            switch (refKind)
+            {
+                case RefKind.None:
+                    throw ExceptionUtilities.UnexpectedValue(refKind);
+
+                case RefKind.In:
+                    return AddressKind.ReadOnly;
+
+                default:
+                    Debug.Assert(refKind is RefKind.Ref or RefKind.Out or RefKindExtensions.StrictIn);
+                    // NOTE: returning "ReadOnlyStrict" here. 
+                    //       we should not get an address of a copy if at all possible
+                    return refKind == RefKindExtensions.StrictIn ? AddressKind.ReadOnlyStrict : AddressKind.Writeable;
             }
         }
 
@@ -1660,7 +1671,13 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             Debug.Assert(method.IsStatic);
 
+            var countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
+
             EmitArguments(arguments, method.Parameters, call.ArgumentRefKindsOpt);
+
+            _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore,
+                MightEscapeTemporaryRefs(call, used: useKind != UseKind.Unused));
+
             int stackBehavior = GetCallStackBehavior(method, arguments);
 
             if (method.IsAbstract || method.IsVirtual)
@@ -1689,6 +1706,8 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             AddressKind? addressKind;
             bool box;
             LocalDefinition tempOpt;
+
+            var countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
 
             if (receiverIsInstanceCall(call, out BoundCall nested))
             {
@@ -1755,6 +1774,11 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     }
 
                     emitArgumentsAndCallEpilogue(call, callKind, receiverUseKind);
+
+                    _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore, MightEscapeTemporaryRefs(call, used: true));
+
+                    countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
+
                     FreeOptTemp(tempOpt);
                     tempOpt = null;
 
@@ -1815,6 +1839,9 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
 
             emitArgumentsAndCallEpilogue(call, callKind, useKind);
+
+            _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore, MightEscapeTemporaryRefs(call, used: useKind != UseKind.Unused));
+
             FreeOptTemp(tempOpt);
 
             return;
@@ -1876,11 +1903,15 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     {
                         // calling a method defined in a base class or interface.
 
-                        // When calling a method that is virtual in metadata on a struct receiver, 
+                        // When calling a method that is virtual in metadata on a struct receiver,
                         // we use a constrained virtual call. If possible, it will skip boxing.
                         if (method.IsMetadataVirtual())
                         {
-                            addressKind = AddressKind.Writeable;
+                            // For readonly value type receivers, we only need readonly access since
+                            // readonly structs guarantee non-mutation for all their methods, and the
+                            // constrained call either resolves to a non-mutating method or boxes the
+                            // value (which copies it). Either way, the original receiver is not mutated.
+                            addressKind = receiverType.IsReadOnly ? AddressKind.ReadOnly : AddressKind.Writeable;
                             callKind = CallKind.ConstrainedCallVirt;
                         }
                         else
@@ -2165,8 +2196,9 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                             {
                                 BoundConversion conv = (BoundConversion)current;
                                 Debug.Assert(!conv.ConversionKind.IsUserDefinedConversion());
+                                Debug.Assert(!conv.ConversionKind.IsUnionConversion());
 
-                                if (conv.ConversionKind.IsUserDefinedConversion())
+                                if (conv.ConversionKind.IsUserDefinedConversion() || conv.ConversionKind.IsUnionConversion())
                                 {
                                     return false;
                                 }
@@ -2446,7 +2478,13 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 }
 
                 // none of the above cases, so just create an instance
+
+                var countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
+
                 EmitArguments(expression.Arguments, constructor.Parameters, expression.ArgumentRefKindsOpt);
+
+                _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore,
+                    MightEscapeTemporaryRefs(expression, used));
 
                 var stackAdjustment = GetObjCreationStackBehavior(expression);
                 _builder.EmitOpCode(ILOpCode.Newobj, stackAdjustment);
@@ -2572,8 +2610,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         private bool TryEmitAssignmentInPlace(BoundAssignmentOperator assignmentOperator, bool used)
         {
             // If the left hand is itself a ref, then we can't use in-place assignment
-            // because we need to spill the creation. This code can't be written in C#, but
-            // can be produced by lowering.
+            // because we need to spill the creation.
             if (assignmentOperator.IsRef)
             {
                 return false;
@@ -2704,7 +2741,14 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             Debug.Assert(temp == null, "in-place ctor target should not create temps");
 
             var constructor = objCreation.Constructor;
+
+            var countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
+
             EmitArguments(objCreation.Arguments, constructor.Parameters, objCreation.ArgumentRefKindsOpt);
+
+            _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore,
+                MightEscapeTemporaryRefs(objCreation, used));
+
             // -2 to adjust for consumed target address and not produced value.
             var stackAdjustment = GetObjCreationStackBehavior(objCreation) - 2;
             _builder.EmitOpCode(ILOpCode.Call, stackAdjustment);
@@ -3565,7 +3609,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             if (node.HoistedField is null)
             {
-                _builder.EmitIntConstant(node.Parameter.Ordinal); // Tracked by https://github.com/dotnet/roslyn/issues/78963 : Follow up
+                _builder.EmitIntConstant(node.Parameter.Ordinal);
             }
             else
             {
@@ -4026,7 +4070,14 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
 
             FunctionPointerMethodSymbol method = ptrInvocation.FunctionPointer.Signature;
+
+            var countBefore = _builder.LocalSlotManager.StartScopeOfTrackingAddressedLocals();
+
             EmitArguments(ptrInvocation.Arguments, method.Parameters, ptrInvocation.ArgumentRefKindsOpt);
+
+            _builder.LocalSlotManager.EndScopeOfTrackingAddressedLocals(countBefore,
+                MightEscapeTemporaryRefs(ptrInvocation, used: useKind != UseKind.Unused));
+
             var stackBehavior = GetCallStackBehavior(ptrInvocation.FunctionPointer.Signature, ptrInvocation.Arguments);
 
             if (temp is object)

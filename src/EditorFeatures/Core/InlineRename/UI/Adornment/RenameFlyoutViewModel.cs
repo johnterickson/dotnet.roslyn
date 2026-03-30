@@ -14,7 +14,7 @@ using System.Windows.Interop;
 using Microsoft.CodeAnalysis.Editor.InlineRename;
 using Microsoft.CodeAnalysis.Editor.Shared.Extensions;
 using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
-using Microsoft.CodeAnalysis.EditorFeatures.Lightup;
+using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.InlineRename;
 using Microsoft.CodeAnalysis.InlineRename.UI.SmartRename;
 using Microsoft.CodeAnalysis.Options;
@@ -24,6 +24,7 @@ using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Imaging.Interop;
 using Microsoft.VisualStudio.PlatformUI.OleComponentSupport;
 using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Editor.SmartRename;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename;
@@ -32,6 +33,7 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly bool _registerOleComponent;
     private readonly IGlobalOptionService _globalOptionService;
+    private readonly IAsynchronousOperationListener _asyncListener;
     private OleComponent? _oleComponent;
     private bool _disposedValue;
     private bool _isReplacementTextValid = true;
@@ -45,12 +47,13 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
         IThreadingContext threadingContext,
         IAsynchronousOperationListenerProvider listenerProvider,
 #pragma warning disable CS0618 // Editor team use Obsolete attribute to mark potential changing API
-        Lazy<ISmartRenameSessionFactoryWrapper>? smartRenameSessionFactory)
+        Lazy<ISmartRenameSessionFactory>? smartRenameSessionFactory)
 #pragma warning restore CS0618 
     {
         Session = session;
         _registerOleComponent = registerOleComponent;
         _globalOptionService = globalOptionService;
+        _asyncListener = listenerProvider.GetListener(FeatureAttribute.Rename);
         Session.ReplacementTextChanged += OnReplacementTextChanged;
         Session.ReplacementsComputed += OnReplacementsComputed;
         Session.ReferenceLocationsChanged += OnReferenceLocationsChanged;
@@ -60,7 +63,7 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
         var smartRenameSession = smartRenameSessionFactory?.Value.CreateSmartRenameSession(Session.TriggerSpan);
         if (smartRenameSession is not null)
         {
-            SmartRenameViewModel = new SmartRenameViewModel(globalOptionService, threadingContext, listenerProvider, smartRenameSession.Value, this);
+            SmartRenameViewModel = new SmartRenameViewModel(globalOptionService, threadingContext, listenerProvider, smartRenameSession, this);
         }
 
         RegisterOleComponent();
@@ -76,9 +79,12 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
         get => Session.ReplacementText;
         set
         {
-            if (value != Session.ReplacementText)
+            // Remove all whitespace characters (including all Unicode whitespace) to prevent invalid identifiers.
+            var trimmedValue = value?.Replace(" ", "") ?? "";
+
+            if (trimmedValue != Session.ReplacementText)
             {
-                Session.ApplyReplacementText(value, propagateEditImmediately: true, updateSelection: false);
+                Session.ApplyReplacementText(trimmedValue, propagateEditImmediately: true, updateSelection: false);
                 NotifyPropertyChanged(nameof(IdentifierText));
             }
         }
@@ -229,7 +235,12 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
         }
 
         SmartRenameViewModel?.Commit(IdentifierText);
-        Session.InitiateCommit();
+
+        var token = _asyncListener.BeginAsyncOperation(nameof(Submit));
+
+        // CommitAsync will display UI to the user while this asynchronous work is being done.
+        Session.CommitAsync(previewChanges: false, editorOperationContext: null)
+            .ReportNonFatalErrorAsync().CompletesAsyncOperation(token);
         return true;
     }
 
@@ -325,10 +336,7 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
                 Session.ReplacementsComputed -= OnReplacementsComputed;
                 Session.CommitStateChange -= CommitStateChange;
 
-                if (SmartRenameViewModel is not null)
-                {
-                    SmartRenameViewModel.Dispose();
-                }
+                SmartRenameViewModel?.Dispose();
 
                 UnregisterOleComponent();
             }
@@ -347,48 +355,48 @@ internal class RenameFlyoutViewModel : INotifyPropertyChanged, IDisposable
         if (Set(ref _isReplacementTextValid, result.ReplacementTextValid, "IsReplacementTextValid"))
         {
             NotifyPropertyChanged(nameof(AllowFileRename));
-
-            if (!_isReplacementTextValid && !string.IsNullOrEmpty(IdentifierText))
-            {
-                StatusText = EditorFeaturesResources.The_new_name_is_not_a_valid_identifier;
-                StatusSeverity = Severity.Error;
-                return;
-            }
-
-            var resolvableConflicts = 0;
-            var unresolvedConflicts = 0;
-            foreach (var replacementKind in result.GetAllReplacementKinds())
-            {
-                switch (replacementKind)
-                {
-                    case InlineRenameReplacementKind.UnresolvedConflict:
-                        unresolvedConflicts++;
-                        break;
-
-                    case InlineRenameReplacementKind.ResolvedReferenceConflict:
-                    case InlineRenameReplacementKind.ResolvedNonReferenceConflict:
-                        resolvableConflicts++;
-                        break;
-                }
-            }
-
-            if (unresolvedConflicts > 0)
-            {
-                StatusText = string.Format(EditorFeaturesResources._0_unresolvable_conflict_s, unresolvedConflicts);
-                StatusSeverity = Severity.Error;
-                return;
-            }
-
-            if (resolvableConflicts > 0)
-            {
-                StatusText = string.Format(EditorFeaturesResources._0_conflict_s_will_be_resolved, resolvableConflicts);
-                StatusSeverity = Severity.Warning;
-                return;
-            }
-
-            StatusText = null;
-            StatusSeverity = Severity.None;
         }
+
+        if (!_isReplacementTextValid && !string.IsNullOrEmpty(IdentifierText))
+        {
+            StatusText = EditorFeaturesResources.The_new_name_is_not_a_valid_identifier;
+            StatusSeverity = Severity.Error;
+            return;
+        }
+
+        var resolvableConflicts = 0;
+        var unresolvedConflicts = 0;
+        foreach (var replacementKind in result.GetAllReplacementKinds())
+        {
+            switch (replacementKind)
+            {
+                case InlineRenameReplacementKind.UnresolvedConflict:
+                    unresolvedConflicts++;
+                    break;
+
+                case InlineRenameReplacementKind.ResolvedReferenceConflict:
+                case InlineRenameReplacementKind.ResolvedNonReferenceConflict:
+                    resolvableConflicts++;
+                    break;
+            }
+        }
+
+        if (unresolvedConflicts > 0)
+        {
+            StatusText = string.Format(EditorFeaturesResources._0_unresolvable_conflict_s, unresolvedConflicts);
+            StatusSeverity = Severity.Error;
+            return;
+        }
+
+        if (resolvableConflicts > 0)
+        {
+            StatusText = string.Format(EditorFeaturesResources._0_conflict_s_will_be_resolved, resolvableConflicts);
+            StatusSeverity = Severity.Warning;
+            return;
+        }
+
+        StatusText = null;
+        StatusSeverity = Severity.None;
     }
 
     private void OnReferenceLocationsChanged(object sender, ImmutableArray<InlineRenameLocation> renameLocations)

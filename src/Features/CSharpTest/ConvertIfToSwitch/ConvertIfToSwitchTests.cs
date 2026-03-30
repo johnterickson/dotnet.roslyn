@@ -20,9 +20,8 @@ using VerifyCS = CSharpCodeRefactoringVerifier<CSharpConvertIfToSwitchCodeRefact
 public sealed class ConvertIfToSwitchTests
 {
     [Fact]
-    public async Task TestUnreachableEndPoint()
-    {
-        await new VerifyCS.Test
+    public Task TestUnreachableEndPoint()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -49,14 +48,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestReachableEndPoint()
-    {
-        await new VerifyCS.Test
+    public Task TestReachableEndPoint()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -84,9 +80,7 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestMissingOnSubsequentBlock()
@@ -157,14 +151,12 @@ public sealed class ConvertIfToSwitchTests
                     DiagnosticResult.CompilerError("CS0161").WithLocation(0).WithArguments("C.M(int)"),
                 },
             },
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact]
-    public async Task TestElseBlock_02()
-    {
-        await new VerifyCS.Test
+    public Task TestElseBlock_02()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -203,14 +195,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMultipleCases_01()
-    {
-        await new VerifyCS.Test
+    public Task TestMultipleCases_01()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -247,14 +236,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMultipleCases_02_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestMultipleCases_02_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -288,12 +274,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMultipleCases_02_CSharp9()
-    {
-        await new VerifyCS.Test
+    public Task TestMultipleCases_02_CSharp9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -327,12 +311,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestExpressionOrder()
-    {
-        await new VerifyCS.Test
+    public Task TestExpressionOrder()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -359,14 +341,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestConstantExpression()
-    {
-        await new VerifyCS.Test
+    public Task TestConstantExpression()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -395,9 +374,7 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestMissingOnNonConstantExpression()
@@ -507,14 +484,12 @@ public sealed class ConvertIfToSwitchTests
             """,
             FixedCode = fixedSource,
             LanguageVersion = languageVersion,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact]
-    public async Task TestIsPatternExpression_01()
-    {
-        await VerifyCS.VerifyRefactoringAsync(
+    public Task TestIsPatternExpression_01()
+        => VerifyCS.VerifyRefactoringAsync(
             """
             class C
             {
@@ -542,12 +517,10 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """);
-    }
 
     [Fact]
-    public async Task TestIsPatternExpression_02_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestIsPatternExpression_02_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -578,12 +551,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestIsPatternExpression_02_CSharp9()
-    {
-        await new VerifyCS.Test
+    public Task TestIsPatternExpression_02_CSharp9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -614,12 +585,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestIsPatternExpression_03()
-    {
-        await VerifyCS.VerifyRefactoringAsync(
+    public Task TestIsPatternExpression_03()
+        => VerifyCS.VerifyRefactoringAsync(
             """
             class C
             {
@@ -647,12 +616,10 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """);
-    }
 
     [Fact]
-    public async Task TestIsPatternExpression_04()
-    {
-        await VerifyCS.VerifyRefactoringAsync(
+    public Task TestIsPatternExpression_04()
+        => VerifyCS.VerifyRefactoringAsync(
             """
             class C
             {
@@ -680,12 +647,10 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """);
-    }
 
     [Fact]
-    public async Task TestComplexExpression_01()
-    {
-        await VerifyCS.VerifyRefactoringAsync(
+    public Task TestComplexExpression_01()
+        => VerifyCS.VerifyRefactoringAsync(
             """
             class C
             {
@@ -722,7 +687,6 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """);
-    }
 
     [Fact]
     public async Task TestMissingIfCaretDoesntIntersectWithTheIfKeyword()
@@ -742,9 +706,8 @@ public sealed class ConvertIfToSwitchTests
     }
 
     [Fact]
-    public async Task TestKeepBlockIfThereIsVariableDeclaration()
-    {
-        await new VerifyCS.Test
+    public Task TestKeepBlockIfThereIsVariableDeclaration()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -780,9 +743,7 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestMissingOnBreak_01()
@@ -830,9 +791,8 @@ public sealed class ConvertIfToSwitchTests
     }
 
     [Fact]
-    public async Task TestNestedBreak()
-    {
-        await new VerifyCS.Test
+    public Task TestNestedBreak()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -871,14 +831,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_01()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_01()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -908,14 +865,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSwitchExpression_01()
-    {
-        await new VerifyCS.Test
+    public Task TestSwitchExpression_01()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -945,12 +899,10 @@ public sealed class ConvertIfToSwitchTests
             CodeActionIndex = 1,
             CodeActionEquivalenceKey = "SwitchExpression",
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSwitchExpression_02()
-    {
-        await new VerifyCS.Test
+    public Task TestSwitchExpression_02()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -980,12 +932,10 @@ public sealed class ConvertIfToSwitchTests
             CodeActionIndex = 1,
             CodeActionEquivalenceKey = "SwitchExpression",
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_02()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_02()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1016,9 +966,7 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
     public async Task TestSubsequentIfStatements_03()
@@ -1082,14 +1030,12 @@ public sealed class ConvertIfToSwitchTests
                     DiagnosticResult.CompilerError("CS0161").WithLocation(0).WithArguments("C.M(int?)"),
                 },
             },
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_04()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_04()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1120,14 +1066,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_05()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_05()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1158,14 +1101,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_06()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_06()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1208,14 +1148,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestSubsequentIfStatements_07()
-    {
-        await new VerifyCS.Test
+    public Task TestSubsequentIfStatements_07()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1276,9 +1213,7 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21109")]
     public async Task TestTrivia1()
@@ -1359,14 +1294,12 @@ public sealed class ConvertIfToSwitchTests
                     DiagnosticResult.CompilerError("CS0103").WithLocation(3).WithArguments("Console"),
                 },
             },
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21101")]
-    public async Task TestTrivia2()
-    {
-        await new VerifyCS.Test
+    public Task TestTrivia2()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1395,14 +1328,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd1_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd1_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1432,9 +1362,7 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp8,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
     public async Task TestCompoundLogicalAnd1_CSharp9()
@@ -1480,14 +1408,12 @@ public sealed class ConvertIfToSwitchTests
                 },
             },
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd2_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd2_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1517,9 +1443,7 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp8,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
     public async Task TestCompoundLogicalAnd2_CSharp9()
@@ -1565,14 +1489,12 @@ public sealed class ConvertIfToSwitchTests
                 },
             },
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd3_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd3_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1602,9 +1524,7 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp8,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
     public async Task TestCompoundLogicalAnd3_CSharp9()
@@ -1650,14 +1570,12 @@ public sealed class ConvertIfToSwitchTests
                 },
             },
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd4()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd4()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1687,9 +1605,7 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp8,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
     public async Task TestCompoundLogicalAnd4_CSharp9()
@@ -1735,14 +1651,12 @@ public sealed class ConvertIfToSwitchTests
                 },
             },
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd5()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd5()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1771,14 +1685,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd6()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd6()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1807,14 +1718,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd7()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd7()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1843,14 +1751,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd8()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1879,14 +1784,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd9()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1915,14 +1817,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd10()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd10()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1951,14 +1850,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd11()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd11()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -1987,14 +1883,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd12()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd12()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2023,14 +1916,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd13()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd13()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2059,14 +1949,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd14()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd14()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2095,14 +1982,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd15()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd15()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2131,14 +2015,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/21360")]
-    public async Task TestCompoundLogicalAnd16()
-    {
-        await new VerifyCS.Test
+    public Task TestCompoundLogicalAnd16()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2167,14 +2048,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/37035")]
-    public async Task TestComplexExpression_02()
-    {
-        await VerifyCS.VerifyRefactoringAsync(
+    public Task TestComplexExpression_02()
+        => VerifyCS.VerifyRefactoringAsync(
             """
             class C
             {
@@ -2206,12 +2084,10 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """);
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestRange_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestRange_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2231,12 +2107,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestRange_CSharp9()
-    {
-        await new VerifyCS.Test
+    public Task TestRange_CSharp9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2271,12 +2145,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestComparison_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestComparison_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2292,12 +2164,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestComparison_CSharp9()
-    {
-        await new VerifyCS.Test
+    public Task TestComparison_CSharp9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2327,7 +2197,6 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
     public async Task TestComparison_SwitchExpression_CSharp9()
@@ -2381,9 +2250,8 @@ public sealed class ConvertIfToSwitchTests
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestComplexIf_CSharp8()
-    {
-        await new VerifyCS.Test
+    public Task TestComplexIf_CSharp8()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2399,7 +2267,6 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp8,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
     public async Task TestComplexIf_CSharp9()
@@ -2448,14 +2315,12 @@ public sealed class ConvertIfToSwitchTests
                 },
             },
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/42368")]
-    public async Task TestComplexIf_Precedence_CSharp9()
-    {
-        await new VerifyCS.Test
+    public Task TestComplexIf_Precedence_CSharp9()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2484,45 +2349,40 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestInequality()
-    {
-        await new VerifyCS.Test
+    public Task TestInequality()
+        => new VerifyCS.Test
         {
             TestCode = """
-            class C
-            {
-                void M(int i)
+                class C
                 {
-                    [||]if ((i > 123 && i < 456) && i != 0 || i == 10)
+                    void M(int i)
                     {
-                        return;
+                        [||]if ((i > 123 && i < 456) && i != 0 || i == 10)
+                        {
+                            return;
+                        }
                     }
                 }
-            }
-            """,
+                """,
             FixedCode = """
- class C
- {
-     void M(int i)
-     {
-         switch (i)
-         {
-             case > 123 and < 456 when i != 0:
-             case 10:
-                 return;
-         }
-     }
- }
- """,
+                class C
+                {
+                    void M(int i)
+                    {
+                        switch (i)
+                        {
+                            case > 123 and < 456 when i != 0:
+                            case 10:
+                                return;
+                        }
+                    }
+                }
+                """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/44278")]
     public async Task TestTopLevelStatement()
@@ -2565,7 +2425,6 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         };
 
         test.ExpectedDiagnostics.Add(
@@ -2576,9 +2435,8 @@ public sealed class ConvertIfToSwitchTests
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/46863")]
-    public async Task CommentsAtTheEndOfBlocksShouldBePlacedBeforeBreakStatements()
-    {
-        await new VerifyCS.Test
+    public Task CommentsAtTheEndOfBlocksShouldBePlacedBeforeBreakStatements()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2623,14 +2481,11 @@ public sealed class ConvertIfToSwitchTests
                 void DoB() { }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMissingOnImplicitCastInRelationalPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestMissingOnImplicitCastInRelationalPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2644,12 +2499,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMissingExpressionOnImplicitCastInRelationalPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestMissingExpressionOnImplicitCastInRelationalPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2665,12 +2518,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMissingOnImplicitCastInRangePattern()
-    {
-        await new VerifyCS.Test
+    public Task TestMissingOnImplicitCastInRangePattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2684,12 +2535,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestMissingOnImplicitCastInConstantPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestMissingOnImplicitCastInConstantPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2703,12 +2552,10 @@ public sealed class ConvertIfToSwitchTests
             """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
-    }
 
     [Fact]
-    public async Task TestExplicitCastInConstantPattern()
-    {
-        await new VerifyCS.Test
+    public Task TestExplicitCastInConstantPattern()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2736,14 +2583,11 @@ public sealed class ConvertIfToSwitchTests
             }
             """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/41131")]
-    public async Task MoveTriviaFromElse1()
-    {
-        await new VerifyCS.Test
+    public Task MoveTriviaFromElse1()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -2793,14 +2637,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/41131")]
-    public async Task MoveTriviaFromElse2()
-    {
-        await new VerifyCS.Test
+    public Task MoveTriviaFromElse2()
+        => new VerifyCS.Test
         {
             TestCode = """
             using System;
@@ -2852,14 +2693,11 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71295")]
-    public async Task TestCodeAfterElseIf()
-    {
-        await new VerifyCS.Test
+    public Task TestCodeAfterElseIf()
+        => new VerifyCS.Test
         {
             TestCode = """
             class C
@@ -2902,7 +2740,69 @@ public sealed class ConvertIfToSwitchTests
                 }
             }
             """,
-            CodeActionValidationMode = CodeActionValidationMode.None,
         }.RunAsync();
-    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81052")]
+    public Task TestPatternWithWhenClause()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+                class R(int? P)
+                {
+                    public int? P { get; } = P;
+                }
+            
+                class C
+                {
+                    int M(R v)
+                    {
+                        $$if (v.P == 0)
+                        {
+                            return 1;
+                        }
+            
+                        if (v.P is { } b && b > 0)
+                        {
+                            return 2;
+                        }
+            
+                        return 0;
+                    }
+                }
+                """,
+            FixedCode = """
+                class R(int? P)
+                {
+                    public int? P { get; } = P;
+                }
+            
+                class C
+                {
+                    int M(R v)
+                    {
+                        switch (v.P)
+                        {
+                            case 0:
+                                return 1;
+                            case { } b when b > 0:
+                                return 2;
+                            default:
+                                return 0;
+                        }
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp14,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/81714")]
+    public Task TestNullableBool()
+        => new VerifyCS.Test
+        {
+            TestCode = """
+                [||]if ((bool?)null == false) { }
+                """,
+            LanguageVersion = LanguageVersion.CSharp14,
+            TestState = { OutputKind = OutputKind.ConsoleApplication }
+        }.RunAsync();
 }

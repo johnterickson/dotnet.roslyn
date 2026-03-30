@@ -289,21 +289,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             }
         }
 
-        private static int GetFullWidth(SyntaxListBuilder? builder)
-        {
-            int width = 0;
-
-            if (builder != null)
-            {
-                for (int i = 0; i < builder.Count; i++)
-                {
-                    width += builder[i]!.FullWidth;
-                }
-            }
-
-            return width;
-        }
-
         private SyntaxToken LexSyntaxToken()
         {
             _leadingTriviaCache.Clear();
@@ -314,7 +299,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
             this.Start();
             this.ScanSyntaxToken(ref tokenInfo);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             _trailingTriviaCache.Clear();
             this.LexSyntaxTrivia(isFollowingToken: true, isTrailing: true, triviaList: ref _trailingTriviaCache);
@@ -1341,21 +1326,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 return false;
             }
 
-            var currentOffset = TextWindow.Offset;
-            var characterWindow = TextWindow.CharacterWindow;
-            var characterWindowCount = TextWindow.CharacterWindowCount;
-
-            var startOffset = currentOffset;
+            var textWindowCharSpan = this.TextWindow.CurrentWindowSpan;
+            var currentIndex = 0;
 
             while (true)
             {
-                if (currentOffset == characterWindowCount)
-                {
-                    // no more contiguous characters.  Fall back to slow path
+                // If we do not not have any more contiguous characters within the char span that we can look at,
+                // then fall back to slow path
+                if (currentIndex == textWindowCharSpan.Length)
                     return false;
-                }
 
-                switch (characterWindow[currentOffset])
+                switch (textWindowCharSpan[currentIndex])
                 {
                     case '&':
                         // CONSIDER: This method is performance critical, so
@@ -1405,13 +1386,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                         // All of the following characters are not valid in an 
                         // identifier.  If we see any of them, then we know we're
                         // done.
-                        var length = currentOffset - startOffset;
+                        var length = currentIndex;
                         TextWindow.AdvanceChar(length);
-                        info.Text = info.StringValue = TextWindow.Intern(characterWindow, startOffset, length);
+                        info.Text = info.StringValue = TextWindow.Intern(textWindowCharSpan[..length]);
                         info.IsVerbatim = false;
                         return true;
                     case >= '0' and <= '9':
-                        if (currentOffset == startOffset)
+                        if (currentIndex == 0)
                         {
                             return false;
                         }
@@ -1423,7 +1404,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                     case '_':
                         // All of these characters are valid inside an identifier.
                         // consume it and keep processing.
-                        currentOffset++;
+                        currentIndex++;
                         continue;
 
                     // case '@':  verbatim identifiers are handled in the slow path
@@ -2213,7 +2194,7 @@ LoopExit:
         {
             if (this.HasErrors)
             {
-                trivia = trivia.WithDiagnosticsGreen(this.GetErrors(leadingTriviaWidth: 0));
+                trivia = trivia.WithDiagnosticsGreen(this.GetErrors());
             }
 
             if (list == null)
@@ -2293,6 +2274,8 @@ LoopExit:
         /// <returns>A trivia node with the whitespace text</returns>
         private SyntaxTrivia ScanWhitespace()
         {
+            Debug.Assert(SyntaxFacts.IsWhitespace(TextWindow.PeekChar()));
+
             int hashCode = Hash.FnvOffsetBias;  // FNV base
             bool onlySpaces = true;
 
@@ -2326,6 +2309,8 @@ top:
                     break;
             }
 
+            Debug.Assert(this.CurrentLexemeWidth > 0);
+
             if (this.CurrentLexemeWidth == 1 && onlySpaces)
             {
                 return SyntaxFactory.Space;
@@ -2336,22 +2321,16 @@ top:
 
                 if (width < MaxCachedTokenSize)
                 {
-                    return _cache.LookupTrivia(
-                        TextWindow.CharacterWindow.AsSpan(TextWindow.LexemeRelativeStart, width),
-                        hashCode,
-                        CreateWhitespaceTrivia,
-                        TextWindow);
+                    return _cache.LookupWhitespaceTrivia(
+                        TextWindow,
+                        this.LexemeStartPosition,
+                        hashCode);
                 }
                 else
                 {
-                    return CreateWhitespaceTrivia(TextWindow);
+                    return SyntaxFactory.Whitespace(this.GetInternedLexemeText());
                 }
             }
-        }
-
-        private static SyntaxTrivia CreateWhitespaceTrivia(SlidingTextWindow textWindow)
-        {
-            return SyntaxFactory.Whitespace(textWindow.GetText(intern: true));
         }
 
         private void LexDirectiveAndExcludedTrivia(
@@ -2489,7 +2468,7 @@ top:
             this.Start();
             TokenInfo info = default(TokenInfo);
             this.ScanDirectiveToken(ref info);
-            var errors = this.GetErrors(leadingTriviaWidth: 0);
+            var errors = this.GetErrors();
 
             var directiveTriviaCache = _directiveTriviaCache;
             directiveTriviaCache?.Clear();
@@ -2852,7 +2831,7 @@ top:
 
             this.Start();
             this.ScanXmlToken(ref xmlTokenInfo);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in xmlTokenInfo, leading, null, errors);
         }
@@ -3208,7 +3187,7 @@ top:
 
             this.Start();
             this.ScanXmlElementTagToken(ref tagInfo);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             // PERF: De-dupe common XML element tags
             if (errors == null && tagInfo.ContextualKind == SyntaxKind.None && tagInfo.Kind == SyntaxKind.IdentifierToken)
@@ -3394,7 +3373,7 @@ top:
 
             this.Start();
             this.ScanXmlAttributeTextToken(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }
@@ -3548,7 +3527,7 @@ top:
 
             this.Start();
             this.ScanXmlCharacter(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }
@@ -3604,7 +3583,7 @@ top:
 
             this.Start();
             this.ScanXmlCrefToken(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }
@@ -4016,7 +3995,7 @@ top:
 
             this.Start();
             this.ScanXmlCDataSectionTextToken(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }
@@ -4138,7 +4117,7 @@ top:
 
             this.Start();
             this.ScanXmlCommentTextToken(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }
@@ -4268,7 +4247,7 @@ top:
 
             this.Start();
             this.ScanXmlProcessingInstructionTextToken(ref info);
-            var errors = this.GetErrors(GetFullWidth(leading));
+            var errors = this.GetErrors();
 
             return Create(in info, leading, null, errors);
         }

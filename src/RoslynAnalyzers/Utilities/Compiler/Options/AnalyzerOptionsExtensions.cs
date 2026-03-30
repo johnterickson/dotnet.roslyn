@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#if CODEANALYSIS_V3_OR_BETTER
-
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -26,7 +24,7 @@ namespace Analyzer.Utilities
     {
         private static readonly ConditionalWeakTable<AnalyzerOptions, ICategorizedAnalyzerConfigOptions> s_cachedOptions = new();
         private static readonly ImmutableHashSet<OutputKind> s_defaultOutputKinds =
-            ImmutableHashSet.CreateRange(Enum.GetValues(typeof(OutputKind)).Cast<OutputKind>());
+            ImmutableHashSet.CreateRange(Enum.GetValues<OutputKind>());
 
         private static bool TryGetSyntaxTreeForOption(ISymbol symbol, [NotNullWhen(returnValue: true)] out SyntaxTree? tree)
         {
@@ -143,7 +141,7 @@ namespace Analyzer.Utilities
             var analyzerConfigOptions = options.GetOrComputeCategorizedAnalyzerConfigOptions(compilation);
             return analyzerConfigOptions.GetOptionValue(
                 optionName, tree, rule,
-                tryParseValue: static (string value, out TEnum result) => Enum.TryParse(value, ignoreCase: true, result: out result),
+                tryParseValue: static (value, out result) => Enum.TryParse(value, ignoreCase: true, result: out result),
                 defaultValue: defaultValue);
         }
 
@@ -344,7 +342,7 @@ namespace Analyzer.Utilities
 
             static SymbolNamesWithValueOption<string?>.NameParts GetParts(string name)
             {
-                var split = name.Split(new[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
+                var split = name.Split(["->"], StringSplitOptions.RemoveEmptyEntries);
 
                 // If we don't find exactly one '->', we assume that there is no given suffix.
                 if (split.Length != 2)
@@ -393,7 +391,7 @@ namespace Analyzer.Utilities
 
             static SymbolNamesWithValueOption<INamedTypeSymbol?>.NameParts GetParts(string name, Compilation compilation)
             {
-                var split = name.Split(new[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
+                var split = name.Split(["->"], StringSplitOptions.RemoveEmptyEntries);
 
                 // If we don't find exactly one '->', we assume that there is no given suffix.
                 if (split.Length != 2)
@@ -488,7 +486,7 @@ namespace Analyzer.Utilities
                     return false;
                 }
 
-                var names = optionValue.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).ToImmutableArray();
+                var names = optionValue.Split(['|'], StringSplitOptions.RemoveEmptyEntries).ToImmutableArray();
                 option = SymbolNamesWithValueOption<TValue>.Create(names, arg.compilation, arg.namePrefix, arg.getTypeAndSuffixFunc);
                 return true;
             }
@@ -643,4 +641,3 @@ namespace Analyzer.Utilities
         }
     }
 }
-#endif

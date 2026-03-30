@@ -19,9 +19,7 @@ public sealed class VisualStudioCompilationOutputFilesTests : TestBase
 {
     [Fact]
     public void OpenStream_Errors()
-    {
-        Assert.Throws<ArgumentException>(() => new CompilationOutputFilesWithImplicitPdbPath(@"a.dll"));
-    }
+        => Assert.Throws<ArgumentException>(() => new CompilationOutputFilesWithImplicitPdbPath(@"a.dll"));
 
     [Theory]
     [InlineData(DebugInformationFormat.PortablePdb, true)]
@@ -51,7 +49,7 @@ public sealed class VisualStudioCompilationOutputFilesTests : TestBase
 
         using (var pdb = outputs.OpenPdb())
         {
-            var encReader = pdb.CreateEditAndContinueMethodDebugInfoReader();
+            var encReader = pdb.CreateEditAndContinueDebugInfoReader();
             Assert.True(encReader.IsPortable);
             var localSig = encReader.GetLocalSignature(MetadataTokens.MethodDefinitionHandle(1));
             Assert.Equal(MetadataTokens.StandaloneSignatureHandle(1), localSig);
