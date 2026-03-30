@@ -17,7 +17,6 @@ using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Roslyn.Test.Utilities;
-using Roslyn.Utilities;
 using Xunit;
 using static Microsoft.CodeAnalysis.Editor.UnitTests.Classification.FormattedClassifications;
 
@@ -1499,6 +1498,120 @@ public sealed class SemanticQuickInfoSourceTests : AbstractSemanticQuickInfoSour
 
         await TestAsync(markup,
             MainDescription("C C.operator >>>(C a, C b)"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceIncrementOperators_Postfix([CombinatorialValues("++", "--")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { C c; c{{{op}}}$$; }
+                public void operator {{{op}}}() {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator {op}()"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceIncrementOperators_Postfix_Checked([CombinatorialValues("++", "--")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { checked { C c; c{{{op}}}$$; } }
+                public void operator checked {{{op}}}() {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator checked {op}()"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceIncrementOperators_Prefix([CombinatorialValues("++", "--")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { C c; {{{op}}}$$ c; }
+                public void operator {{{op}}}() {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator {op}()"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceIncrementOperators_Prefix_Checked([CombinatorialValues("++", "--")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { checked { C c; {{{op}}}$$ c; } }
+                public void operator checked {{{op}}}() {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator checked {op}()"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceCompoundAssignmentOperators([CombinatorialValues("+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", ">>>=")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { C c; c {{{op}}}$$ 1; }
+                public void operator {{{op}}}(int x) {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator {op}(int x)"));
+    }
+
+    [Theory]
+    [CombinatorialData]
+    public async Task TestInstanceCompoundAssignmentOperators_Checked([CombinatorialValues("+=", "-=", "*=", "/=")] string op)
+    {
+        var markup =
+            $$$"""
+            class C
+            {
+                static void M() { checked { C c; c {{{op}}}$$ 1; } }
+                public void operator checked {{{op}}}(int x) {}
+            }
+            """;
+
+        await TestWithOptionsAsync(
+            Options.Regular.WithLanguageVersion(LanguageVersion.Preview),
+            markup,
+            MainDescription($"void C.operator checked {op}(int x)"));
     }
 
     [Fact]
@@ -5544,6 +5657,31 @@ MainDescription($"({FeaturesResources.parameter}) params int[] xs"));
             """);
     }
 
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/78171")]
+    public async Task TestPreprocessingSymbol()
+    {
+        var markup = """
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            class Program
+            {
+                async Task Process(CancellationToken cancellationToken = default)
+                {
+            #if N$$ET
+                    // .NET requires 100ms delay in this fictional example
+                    await Task.Delay(100, cancellationToken);
+            #else
+                    // .NET Framework requires 200ms delay in this fictional example, and we can't pass a CT on it
+                    await Task.Delay(200);
+            #endif
+                }
+            }
+            """;
+
+        await TestAsync(markup, MainDescription("NET"));
+    }
+
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/546849")]
     public async Task TestIndexedProperty()
     {
@@ -6240,7 +6378,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             </Workspace>
             """;
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { MainDescription($"({FeaturesResources.field}) int C.x"), Usage("") });
+        await VerifyWithReferenceWorkerAsync(markup, [MainDescription($"({FeaturesResources.field}) int C.x"), Usage("")]);
     }
 
     [Fact]
@@ -6270,13 +6408,13 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             """;
         var expectedDescription = Usage($"""
 
-            {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
-            {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
+                {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
 
             {FeaturesResources.You_can_use_the_navigation_bar_to_switch_contexts}
             """, expectsWarningGlyph: true);
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { expectedDescription });
+        await VerifyWithReferenceWorkerAsync(markup, [expectedDescription]);
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/37097")]
@@ -6306,13 +6444,13 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             """;
         var expectedDescription = Usage($"""
 
-            {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Not_Available)}
-            {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Available)}
+                {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Available)}
 
             {FeaturesResources.You_can_use_the_navigation_bar_to_switch_contexts}
             """, expectsWarningGlyph: true);
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { expectedDescription });
+        await VerifyWithReferenceWorkerAsync(markup, [expectedDescription]);
     }
 
     [Fact]
@@ -6346,15 +6484,15 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
         var expectedDescription = Usage(
             $"""
 
-            {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
-            {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
-            {string.Format(FeaturesResources._0_1, "Proj3", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
+                {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj3", FeaturesResources.Not_Available)}
 
             {FeaturesResources.You_can_use_the_navigation_bar_to_switch_contexts}
             """,
             expectsWarningGlyph: true);
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { expectedDescription });
+        await VerifyWithReferenceWorkerAsync(markup, [expectedDescription]);
     }
 
     [Fact]
@@ -6390,12 +6528,12 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             """;
         var expectedDescription = Usage($"""
 
-            {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
-            {string.Format(FeaturesResources._0_1, "Proj3", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
+                {string.Format(FeaturesResources._0_1, "Proj3", FeaturesResources.Not_Available)}
 
             {FeaturesResources.You_can_use_the_navigation_bar_to_switch_contexts}
             """, expectsWarningGlyph: true);
-        await VerifyWithReferenceWorkerAsync(markup, new[] { expectedDescription });
+        await VerifyWithReferenceWorkerAsync(markup, [expectedDescription]);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/962353")]
@@ -6450,7 +6588,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             </Workspace>
             """;
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { MainDescription($"({FeaturesResources.local_variable}) int x"), Usage("") });
+        await VerifyWithReferenceWorkerAsync(markup, [MainDescription($"({FeaturesResources.local_variable}) int x"), Usage("")]);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1020944")]
@@ -6480,13 +6618,13 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             </Workspace>
             """;
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { MainDescription($"({FeaturesResources.local_variable}) int x"), Usage($"""
+        await VerifyWithReferenceWorkerAsync(markup, [MainDescription($"({FeaturesResources.local_variable}) int x"), Usage($"""
 
-            {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
-            {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
+                {string.Format(FeaturesResources._0_1, "Proj1", FeaturesResources.Available)}
+                {string.Format(FeaturesResources._0_1, "Proj2", FeaturesResources.Not_Available)}
 
             {FeaturesResources.You_can_use_the_navigation_bar_to_switch_contexts}
-            """, expectsWarningGlyph: true) });
+            """, expectsWarningGlyph: true)]);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1020944")]
@@ -6512,7 +6650,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             </Workspace>
             """;
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { MainDescription($"({FeaturesResources.label}) LABEL"), Usage("") });
+        await VerifyWithReferenceWorkerAsync(markup, [MainDescription($"({FeaturesResources.label}) LABEL"), Usage("")]);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1020944")]
@@ -6539,7 +6677,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             </Workspace>
             """;
 
-        await VerifyWithReferenceWorkerAsync(markup, new[] { MainDescription($"({FeaturesResources.range_variable}) int y"), Usage("") });
+        await VerifyWithReferenceWorkerAsync(markup, [MainDescription($"({FeaturesResources.range_variable}) int y"), Usage("")]);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1019766")]
@@ -7826,7 +7964,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             }
             """,
             MainDescription("bool string.operator ==(string a, string b)"),
-            SymbolGlyph(Glyph.Operator));
+            SymbolGlyph(Glyph.OperatorPublic));
     }
 
     [Fact]
@@ -7956,6 +8094,43 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
     }
 
     [Fact]
+    public async Task NullableParameterThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                void N(string s)
+                {
+            #nullable enable
+                    string s2 = $$s;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.parameter}) string s"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "s")));
+    }
+
+    [Fact]
+    public async Task NullableParameterThatIsOblivious_Propagated()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                void N(string s)
+                {
+            #nullable enable
+                    string s2 = s;
+                    string s3 = $$s2;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.local_variable}) string s2"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_null_here, "s2")));
+    }
+
+    [Fact]
     public async Task NullableFieldThatIsMaybeNull()
     {
         await TestWithOptionsAsync(TestOptions.Regular8,
@@ -7999,6 +8174,83 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
     }
 
     [Fact]
+    public async Task NullableFieldThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                string s = null;
+
+                void N()
+                {
+                    s = "";
+            #nullable enable
+                    string s2 = $$s;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.field}) string X.s"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "s")));
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77219")]
+    public async Task NullableBackingFieldThatIsMaybeNull()
+    {
+        await TestWithOptionsAsync(TestOptions.RegularPreview,
+            """
+            #nullable enable
+
+            class X
+            {
+                string? P
+                {
+                    get => $$field;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.field}) string? X.P.field"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_may_be_null_here, "P.field")));
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77219")]
+    public async Task NullableBackingFieldThatIsNotNull()
+    {
+        await TestWithOptionsAsync(TestOptions.RegularPreview,
+            """
+            #nullable enable
+
+            class X
+            {
+                string P
+                {
+                    get => $$field;
+                } = "a";
+            }
+            """,
+            MainDescription($"({FeaturesResources.field}) string X.P.field"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_null_here, "P.field")));
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77219")]
+    public async Task NullableBackingFieldThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.RegularPreview,
+            """
+            class X
+            {
+                string P
+                {
+            #nullable enable
+                    get => $$field;
+                } = "a";
+            }
+            """,
+            MainDescription($"({FeaturesResources.field}) string X.P.field"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "P.field")));
+    }
+
+    [Fact]
     public async Task NullablePropertyThatIsMaybeNull()
     {
         await TestWithOptionsAsync(TestOptions.Regular8,
@@ -8039,6 +8291,30 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             """,
             MainDescription("string? X.S { get; set; }"),
             NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_null_here, "S")));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("S = null;")]
+    [InlineData("S = string.Empty;")]
+    public async Task NullablePropertyThatIsOblivious(string code)
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            $$"""
+            class X
+            {
+                string S { get; set; }
+
+                void N()
+                {
+                    {{code}}
+            #nullable enable
+                    string s2 = $$S;
+                }
+            }
+            """,
+            MainDescription("string X.S { get; set; }"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "S")));
     }
 
     [Fact]
@@ -8094,6 +8370,29 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
     }
 
     [Fact]
+    public async Task NullableRangeVariableThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            using System.Collections.Generic;
+            class X
+            {
+                void N()
+                {
+                    IEnumerable<string> enumerable;
+                    foreach (string s in enumerable)
+                    {
+            #nullable enable
+                        string s2 = $$s;
+                    }
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.local_variable}) string s"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "s")));
+    }
+
+    [Fact]
     public async Task NullableLocalThatIsMaybeNull()
     {
         await TestWithOptionsAsync(TestOptions.Regular8,
@@ -8135,6 +8434,141 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             """,
             MainDescription($"({FeaturesResources.local_variable}) string? s"),
             NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_null_here, "s")));
+    }
+
+    [Fact]
+    public async Task NullableLocalThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                void N()
+                {
+                    string s = null;
+            #nullable enable
+                    string s2 = $$s;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.local_variable}) string s"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "s")));
+    }
+
+    [Theory]
+    [InlineData("#nullable enable warnings")]
+    [InlineData("#nullable enable annotations")]
+    public async Task NullableLocalThatIsOblivious_NotFullyNullableEnabled(string directive)
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            $$"""
+            class X
+            {
+                void N()
+                {
+                    string s = null;
+            {{directive}}
+                    string s2 = $$s;
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.local_variable}) string s"),
+            NullabilityAnalysis(""));
+    }
+
+    [Fact]
+    public async Task NullableMethodThatIsMaybeNull()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            #nullable enable
+            class X
+            {
+                string? M() => null;
+                void N()
+                {
+                    string? s = $$M();
+                }
+            }
+            """,
+            MainDescription("string? X.M()"),
+            NullabilityAnalysis(""));
+    }
+
+    [Fact]
+    public async Task NullableMethodThatIsNotNull()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            #nullable enable
+            class X
+            {
+                string M() => "";
+                void N()
+                {
+                    string s = $$M();
+                }
+            }
+            """,
+            MainDescription("string X.M()"),
+            NullabilityAnalysis(""));
+    }
+
+    [Fact]
+    public async Task NullableMethodThatIsOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                string M() => "";
+                void N()
+                {
+            #nullable enable
+                    string s = $$M();
+                }
+            }
+            """,
+            MainDescription("string X.M()"),
+            NullabilityAnalysis(string.Format(FeaturesResources._0_is_not_nullable_aware, "M")));
+    }
+
+    [Fact]
+    public async Task NullableMethodThatIsVoid()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            #nullable enable
+            class X
+            {
+                void M() { }
+                void N()
+                {
+                    string s = $$M();
+                }
+            }
+            """,
+            MainDescription("void X.M()"),
+            NullabilityAnalysis(""));
+    }
+
+    [Fact]
+    public async Task NullableMethodThatIsVoidAndOblivious()
+    {
+        await TestWithOptionsAsync(TestOptions.Regular8,
+            """
+            class X
+            {
+                void M() { }
+                void N()
+                {
+            #nullable enable
+                    string s = $$M();
+                }
+            }
+            """,
+            MainDescription("void X.M()"),
+            NullabilityAnalysis(""));
     }
 
     [Fact]
@@ -8368,7 +8802,7 @@ Documentation("This example shows how to specify the GenericClass<T> cref.",
             Documentation("A generic method T."),
             item => Assert.Equal(
                 item.Sections.First(section => section.Kind == QuickInfoSectionKinds.DocumentationComments).TaggedParts.Select(p => p.Tag).ToArray(),
-                new[] { "Text", "Space", "TypeParameter", "Text" }));
+                ["Text", "Space", "TypeParameter", "Text"]));
     }
 
     [Fact]
@@ -10144,8 +10578,8 @@ AnonymousTypes(
             """;
         var description = $"string 'a.@string {{ get; }}";
 
-        await VerifyWithMscorlib45Async(markup, new[]
-        {
+        await VerifyWithMscorlib45Async(markup,
+        [
             MainDescription(description),
             AnonymousTypes(
                 $$"""
@@ -10153,7 +10587,7 @@ AnonymousTypes(
                 {{FeaturesResources.Types_colon}}
                     'a {{FeaturesResources.is_}} new { string @string }
                 """)
-        });
+        ]);
     }
 
     [Theory, CombinatorialData]
@@ -10662,5 +11096,182 @@ AnonymousTypes(
             }
             """,
             MainDescription($"({CSharpFeaturesResources.awaitable}) ValueTask IAsyncDisposable.DisposeAsync()"));
+    }
+
+    [Fact]
+    public async Task NullConditionalAssignment()
+    {
+        await VerifyWithNet8Async("""
+            class C
+            {
+                string s;
+
+                void M(C c)
+                {
+                    c?.$$s = "";
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.field}) string C.s"));
+    }
+
+    [Fact]
+    public async Task TestModernExtension1()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                extension(string s)
+                {
+                    public void Goo() { }
+                }
+            }
+
+            class C
+            {
+                void M(string s)
+                {
+                    s.$$Goo();
+                }
+            }
+            """,
+            MainDescription($"void Extensions.extension(string).Goo()"));
+    }
+
+    [Fact]
+    public async Task TestModernExtension2()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                extension(string s)
+                {
+                    public void Goo() { }
+                    public void Goo(int i) { }
+                }
+            }
+
+            class C
+            {
+                void M(string s)
+                {
+                    s.$$Goo();
+                }
+            }
+            """,
+            MainDescription($"void Extensions.extension(string).Goo() (+ 1 {FeaturesResources.overload})"));
+    }
+
+    [Fact]
+    public async Task TestModernExtension3()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                extension(string s)
+                {
+                    public void Goo() { }
+                    public void Goo(int i) { }
+                }
+            }
+
+            class C
+            {
+                void M(string s)
+                {
+                    s.$$Goo(0);
+                }
+            }
+            """,
+            MainDescription($"void Extensions.extension(string).Goo(int i) (+ 1 {FeaturesResources.overload})"));
+    }
+
+    [Fact]
+    public async Task TestModernExtension4()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                extension(string s)
+                {
+                    public int Prop => 0;
+                }
+            }
+
+            class C
+            {
+                void M(string s)
+                {
+                    var v = s.$$Prop;
+                }
+            }
+            """,
+            MainDescription($$"""int Extensions.extension(string).Prop { get; }"""));
+    }
+
+    [Fact]
+    public async Task TestModernExtension5()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                extension(string s)
+                {
+                    public void Goo()
+                    {
+                        Console.WriteLine($$s);
+                    }
+                }
+            }
+            """,
+            MainDescription($"({FeaturesResources.parameter}) string s"));
+    }
+
+    [Fact]
+    public async Task TestModernExtension6()
+    {
+        await TestWithOptionsAsync(
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview),
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            static class Extensions
+            {
+                $$extension(string s)
+                {
+                    public void Goo()
+                    {
+                        Console.WriteLine(s);
+                    }
+                }
+            }
+            """,
+            MainDescription($"Extensions.extension(System.String)"));
     }
 }

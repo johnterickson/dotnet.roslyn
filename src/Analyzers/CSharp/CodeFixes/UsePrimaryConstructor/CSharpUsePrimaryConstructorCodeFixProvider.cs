@@ -28,8 +28,8 @@ using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp.UsePrimaryConstructor;
 
-using static CSharpUsePrimaryConstructorDiagnosticAnalyzer;
 using static CSharpSyntaxTokens;
+using static CSharpUsePrimaryConstructorDiagnosticAnalyzer;
 using static SyntaxFactory;
 
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = PredefinedCodeFixProviderNames.UsePrimaryConstructor), Shared]
@@ -207,7 +207,7 @@ internal sealed partial class CSharpUsePrimaryConstructorCodeFixProvider() : Cod
             {
                 var currentIndex = i;
                 if (s_commentFollowedByBlankLine.TryMatch(leadingTrivia, ref currentIndex))
-                    return leadingTrivia.Take(currentIndex).ToImmutableArray();
+                    return leadingTrivia[..currentIndex];
             }
 
             return [];

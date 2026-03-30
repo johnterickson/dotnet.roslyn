@@ -14,7 +14,7 @@ using Xunit;
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.ConvertToRecord;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsConvertToRecord)]
-public class ConvertToRecordCodeFixTests
+public sealed class ConvertToRecordCodeFixTests
 {
     [Fact]
     public async Task TestMovePropertySimpleRecordInheritance_CodeFix()
@@ -141,7 +141,7 @@ public class ConvertToRecordCodeFixTests
         await TestCodeFixAsync(initialMarkup, changedMarkup).ConfigureAwait(false);
     }
 
-    private class CodeFixTest : CSharpCodeFixVerifier<TestAnalyzer, CSharpConvertToRecordCodeFixProvider>.Test
+    private sealed class CodeFixTest : CSharpCodeFixVerifier<TestAnalyzer, CSharpConvertToRecordCodeFixProvider>.Test
     {
     }
 
@@ -157,17 +157,17 @@ public class ConvertToRecordCodeFixTests
         await test.RunAsync().ConfigureAwait(false);
     }
 
-    private class TestAnalyzer : DiagnosticAnalyzer
+    private sealed class TestAnalyzer : DiagnosticAnalyzer
     {
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
 #pragma warning disable RS0030 // Do not used banned APIs
-            => ImmutableArray.Create(new DiagnosticDescriptor(
+            => [new DiagnosticDescriptor(
                 "CS8865",
                 "Only records may inherit from records.",
                 "Only records may inherit from records.",
                 "Compiler error",
                 DiagnosticSeverity.Error,
-                isEnabledByDefault: true));
+                isEnabledByDefault: true)];
 #pragma warning restore RS0030 // Do not used banned APIs
 
         public override void Initialize(AnalysisContext context)

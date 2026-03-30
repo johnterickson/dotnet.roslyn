@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -20,7 +19,6 @@ using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
-using Microsoft.CodeAnalysis.Utilities;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp.UseSimpleUsingStatement;
@@ -67,8 +65,8 @@ internal sealed class UseSimpleUsingStatementCodeFixProvider() : SyntaxEditorBas
         SyntaxNode currentBlockLike,
         ISet<UsingStatementSyntax> topmostUsingStatements)
     {
-        var originalBlockStatements = (IReadOnlyList<StatementSyntax>)CSharpBlockFacts.Instance.GetExecutableBlockStatements(originalBlockLike);
-        var currentBlockStatements = (IReadOnlyList<StatementSyntax>)CSharpBlockFacts.Instance.GetExecutableBlockStatements(currentBlockLike);
+        var originalBlockStatements = CSharpBlockFacts.Instance.GetExecutableBlockStatements(originalBlockLike);
+        var currentBlockStatements = CSharpBlockFacts.Instance.GetExecutableBlockStatements(currentBlockLike);
 
         if (originalBlockStatements.Count == currentBlockStatements.Count)
         {

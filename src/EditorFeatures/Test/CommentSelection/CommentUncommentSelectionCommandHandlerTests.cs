@@ -28,9 +28,9 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.CommentSelection;
 
 [UseExportProvider]
 [Trait(Traits.Feature, Traits.Features.CommentSelection)]
-public class CommentUncommentSelectionCommandHandlerTests
+public sealed class CommentUncommentSelectionCommandHandlerTests
 {
-    private class MockCommentSelectionService : AbstractCommentSelectionService
+    private sealed class MockCommentSelectionService : AbstractCommentSelectionService
     {
         public MockCommentSelectionService(bool supportsBlockComment)
             => SupportsBlockComment = supportsBlockComment;
@@ -77,7 +77,7 @@ public class CommentUncommentSelectionCommandHandlerTests
     public void Comment_EmptyLine()
     {
         var code = @"|start||end|";
-        CommentSelection(code, Enumerable.Empty<TextChange>(), supportBlockComments: true);
+        CommentSelection(code, [], supportBlockComments: true);
     }
 
     [WpfFact]
@@ -91,7 +91,7 @@ public class CommentUncommentSelectionCommandHandlerTests
     public void Comment_Whitespace()
     {
         var code = @"  |start|   |end|   ";
-        CommentSelection(code, Enumerable.Empty<TextChange>(), supportBlockComments: true);
+        CommentSelection(code, [], supportBlockComments: true);
     }
 
     [WpfFact]
@@ -483,14 +483,14 @@ class Goo
     public void Uncomment_AtEndOfBlockComment()
     {
         var code = @"/*using System;*/|start||end|";
-        UncommentSelection(code, Enumerable.Empty<TextChange>(), new Span(17, 0), supportBlockComments: true);
+        UncommentSelection(code, [], new Span(17, 0), supportBlockComments: true);
     }
 
     [WpfFact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/932411")]
     public void Uncomment_BlockCommentWithNoEnd()
     {
         var code = @"/*using |start||end|System;";
-        UncommentSelection(code, Enumerable.Empty<TextChange>(), new Span(8, 0), supportBlockComments: true);
+        UncommentSelection(code, [], new Span(8, 0), supportBlockComments: true);
     }
 
     [WpfFact, WorkItem("https://github.com/dotnet/roslyn/issues/31669")]

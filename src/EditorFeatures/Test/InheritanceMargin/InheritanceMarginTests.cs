@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.Collections;
 using Microsoft.CodeAnalysis.InheritanceMargin;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Remote.Testing;
@@ -20,7 +21,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.InheritanceMargin;
 
 [Trait(Traits.Feature, Traits.Features.InheritanceMargin)]
 [UseExportProvider]
-public class InheritanceMarginTests
+public sealed class InheritanceMarginTests
 {
     private const string SearchAreaTag = nameof(SearchAreaTag);
     private static readonly TestComposition s_inProcessComposition = EditorTestCompositions.EditorFeatures;
@@ -214,7 +215,7 @@ public class InheritanceMarginTests
         await VerifyTestMemberInDocumentAsync(testWorkspace, testHostDocument2, memberItemsInMarkup2, cancellationToken).ConfigureAwait(false);
     }
 
-    private class TestInheritanceMemberItem
+    private sealed class TestInheritanceMemberItem
     {
         public readonly int LineNumber;
         public readonly string MemberName;
@@ -234,7 +235,7 @@ public class InheritanceMarginTests
             => MemberName;
     }
 
-    private class TargetInfo
+    private sealed class TargetInfo
     {
         public readonly string TargetSymbolDisplayName;
         public readonly ImmutableArray<string> LocationTags;
@@ -266,7 +267,7 @@ public class InheritanceMarginTests
             TargetSymbolDisplayName = targetSymbolDisplayName;
             Relationship = relationship;
             InMetadata = inMetadata;
-            LocationTags = ImmutableArray<string>.Empty;
+            LocationTags = [];
         }
 
         public TargetInfo(
@@ -275,12 +276,12 @@ public class InheritanceMarginTests
             params string[] locationTags)
         {
             TargetSymbolDisplayName = targetSymbolDisplayName;
-            LocationTags = locationTags.ToImmutableArray();
+            LocationTags = [.. locationTags];
             Relationship = relationship;
         }
     }
 
-    private class TestInheritanceTargetItem
+    private sealed class TestInheritanceTargetItem
     {
         public readonly string TargetSymbolName;
         public readonly InheritanceRelationship RelationshipToMember;
@@ -314,7 +315,7 @@ public class InheritanceMarginTests
                 return new TestInheritanceTargetItem(
                     targetInfo.TargetSymbolDisplayName,
                     targetInfo.Relationship,
-                    ImmutableArray<DocumentSpan>.Empty,
+                    [],
                     isInMetadata: true,
                     targetInfo.LanguageGlyph,
                     targetInfo.ProjectName);
@@ -447,11 +448,10 @@ public class {|target2:Bar|} : IBar
         var itemOnLine3 = new TestInheritanceMemberItem(
             lineNumber: 3,
             memberName: "interface IBar2",
-            targets: ImmutableArray<TargetInfo>.Empty
-                .Add(new TargetInfo(
+            targets: [new TargetInfo(
                     targetSymbolDisplayName: "IBar",
                     locationTag: "target1",
-                    relationship: InheritanceRelationship.InheritedInterface))
+                    relationship: InheritanceRelationship.InheritedInterface)]
             );
 
         return VerifyInSingleDocumentAsync(

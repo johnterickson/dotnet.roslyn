@@ -13,12 +13,11 @@ using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.CodeAnalysis.Text;
 using Roslyn.Test.Utilities;
-using Roslyn.Utilities;
 using Xunit;
 
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.PdbSourceDocument;
 
-public partial class PdbSourceDocumentTests : AbstractPdbSourceDocumentTests
+public sealed partial class PdbSourceDocumentTests : AbstractPdbSourceDocumentTests
 {
     [Theory, CombinatorialData]
     public async Task PreprocessorSymbols1(Location pdbLocation, Location sourceLocation)
@@ -663,7 +662,7 @@ public partial class PdbSourceDocumentTests : AbstractPdbSourceDocumentTests
             var (project, symbol) = await CompileAndFindSymbolAsync(path, Location.OnDisk, Location.OnDisk, metadataSource, c => c.GetMember("C.E"));
 
             // Now make the PDB a zero byte file
-            File.WriteAllBytes(GetPdbPath(path), new byte[0]);
+            File.WriteAllBytes(GetPdbPath(path), []);
 
             await GenerateFileAndVerifyAsync(project, symbol, Location.OnDisk, source, expectedSpan, expectNullResult: true);
         });

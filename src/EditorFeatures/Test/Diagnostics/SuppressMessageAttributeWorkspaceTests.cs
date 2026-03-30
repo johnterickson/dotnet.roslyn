@@ -5,7 +5,6 @@
 #nullable disable
 
 using System;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -20,7 +19,7 @@ using Xunit;
 namespace Microsoft.CodeAnalysis.UnitTests.Diagnostics;
 
 [UseExportProvider]
-public class SuppressMessageAttributeWorkspaceTests : SuppressMessageAttributeTests
+public sealed class SuppressMessageAttributeWorkspaceTests : SuppressMessageAttributeTests
 {
     private static readonly TestComposition s_compositionWithMockDiagnosticUpdateSourceRegistrationService = EditorTestCompositions.EditorFeatures;
 
@@ -57,7 +56,7 @@ namespace System.Diagnostics.CodeAnalysis
 
         workspace.TryApplyChanges(workspace.CurrentSolution.WithAnalyzerReferences(
         [
-            new AnalyzerImageReference(analyzers.ToImmutableArray())
+            new AnalyzerImageReference([.. analyzers])
         ]).WithProjectMetadataReferences(
             workspace.Projects.Single().Id,
             workspace.Projects.Single().MetadataReferences.Append(_unconditionalSuppressMessageRef.Value)));

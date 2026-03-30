@@ -14,7 +14,7 @@ using Microsoft.VisualStudio.LanguageServices.Implementation.Utilities;
 
 namespace Microsoft.VisualStudio.LanguageServices.Implementation.MoveToNamespace;
 
-internal class MoveToNamespaceDialogViewModel : AbstractNotifyPropertyChanged, IDataErrorInfo
+internal sealed class MoveToNamespaceDialogViewModel : AbstractNotifyPropertyChanged, IDataErrorInfo
 {
     private readonly ISyntaxFacts _syntaxFacts;
 
@@ -26,9 +26,12 @@ internal class MoveToNamespaceDialogViewModel : AbstractNotifyPropertyChanged, I
     {
         _syntaxFacts = syntaxFacts ?? throw new ArgumentNullException(nameof(syntaxFacts));
         _namespaceName = defaultNamespace;
-        AvailableNamespaces = namespaceHistory.Select(n => new NamespaceItem(true, n))
-            .Concat(availableNamespaces.Except(namespaceHistory).Select(n => new NamespaceItem(false, n)))
-            .ToImmutableArray();
+        AvailableNamespaces =
+        [
+            .. namespaceHistory.Select(n => new NamespaceItem(true, n))
+,
+            .. availableNamespaces.Except(namespaceHistory).Select(n => new NamespaceItem(false, n)),
+        ];
 
         PropertyChanged += MoveToNamespaceDialogViewModel_PropertyChanged;
     }

@@ -22,7 +22,7 @@ using IndentStyle = Microsoft.CodeAnalysis.Formatting.FormattingOptions2.IndentS
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Formatting.Indentation;
 
 [Trait(Traits.Feature, Traits.Features.SmartIndent)]
-public partial class SmartIndenterTests : CSharpFormatterTestsBase
+public sealed partial class SmartIndenterTests : CSharpFormatterTestsBase
 {
     private static readonly TestComposition s_compositionWithTestFormattingRules = EditorTestCompositions.EditorFeatures
         .AddParts(typeof(TestFormattingRuleFactoryServiceFactory));
@@ -3432,6 +3432,88 @@ namespace NS
             expectedIndentation: 12);
     }
 
+    [WpfTheory]
+    [CombinatorialData]
+    public void InstanceIncrementOperator([CombinatorialValues("++", "--")] string op, bool isChecked)
+    {
+        var code = @"using System;
+
+namespace NS
+{
+    class Class
+    {
+        public void operator " + (isChecked ? "checked " : "") + op + @"()
+
+";
+
+        AssertSmartIndent(
+            code,
+            indentationLine: 7,
+            expectedIndentation: 12);
+    }
+
+    [WpfTheory]
+    [CombinatorialData]
+    public void InstanceIncrementOperatorBody([CombinatorialValues("++", "--")] string op, bool isChecked)
+    {
+        var code = @"using System;
+
+namespace NS
+{
+    class Class
+    {
+        public void operator " + (isChecked ? "checked " : "") + op + @"()
+        {
+
+";
+
+        AssertSmartIndent(
+            code,
+            indentationLine: 8,
+            expectedIndentation: 12);
+    }
+
+    [WpfTheory]
+    [CombinatorialData]
+    public void InstanceCompoundAssignmentOperator([CombinatorialValues("+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", ">>>=")] string op, bool isChecked)
+    {
+        var code = @"using System;
+
+namespace NS
+{
+    class Class
+    {
+        public static Class operator " + (isChecked ? "checked " : "") + op + @"(Class x)
+
+";
+
+        AssertSmartIndent(
+            code,
+            indentationLine: 7,
+            expectedIndentation: 12);
+    }
+
+    [WpfTheory]
+    [CombinatorialData]
+    public void InstanceCompoundAssignmentOperatorBody([CombinatorialValues("+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", ">>>=")] string op, bool isChecked)
+    {
+        var code = @"using System;
+
+namespace NS
+{
+    class Class
+    {
+        public static Class operator " + (isChecked ? "checked " : "") + op + @"(Class x)
+        {
+
+";
+
+        AssertSmartIndent(
+            code,
+            indentationLine: 8,
+            expectedIndentation: 12);
+    }
+
     private static void AssertSmartIndentInProjection(
         string markup,
         int expectedIndentation,
@@ -3451,7 +3533,7 @@ namespace NS
     {
         var optionsSet = options != null
                 ? new[] { options }
-                : new[] { TestOptions.Regular, TestOptions.Script };
+                : [TestOptions.Regular, TestOptions.Script];
 
         foreach (var option in optionsSet)
         {
@@ -3507,7 +3589,7 @@ namespace NS
     {
         var optionsSet = options != null
             ? new[] { options }
-            : new[] { TestOptions.Regular, TestOptions.Script };
+            : [TestOptions.Regular, TestOptions.Script];
 
         foreach (var option in optionsSet)
         {
@@ -3536,7 +3618,7 @@ namespace NS
     {
         var optionsSet = options != null
             ? new[] { options }
-            : new[] { TestOptions.Regular, TestOptions.Script };
+            : [TestOptions.Regular, TestOptions.Script];
 
         foreach (var option in optionsSet)
         {

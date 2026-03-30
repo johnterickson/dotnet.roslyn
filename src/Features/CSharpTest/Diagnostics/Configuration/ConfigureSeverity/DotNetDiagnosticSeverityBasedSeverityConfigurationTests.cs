@@ -30,7 +30,7 @@ public abstract partial class DotNetDiagnosticSeverityBasedSeverityConfiguration
             defaultSeverity: DiagnosticSeverity.Info,
             isEnabledByDefault: true);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
         public override void Initialize(AnalysisContext context)
         {
@@ -51,7 +51,7 @@ public abstract partial class DotNetDiagnosticSeverityBasedSeverityConfiguration
     }
 
     [Trait(Traits.Feature, Traits.Features.CodeActionsConfiguration)]
-    public class NoneConfigurationTests : DotNetDiagnosticSeverityBasedSeverityConfigurationTests
+    public sealed class NoneConfigurationTests : DotNetDiagnosticSeverityBasedSeverityConfigurationTests
     {
         protected override int CodeActionIndex => 0;
 

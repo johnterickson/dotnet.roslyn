@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections.Immutable;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.PdbSourceDocument;
 
-public class PdbSourceDocumentLoaderServiceTests : AbstractPdbSourceDocumentTests
+public sealed class PdbSourceDocumentLoaderServiceTests : AbstractPdbSourceDocumentTests
 {
     [Fact]
     public async Task ReturnsSourceFileFromSourceLink()
@@ -45,7 +44,7 @@ public class PdbSourceDocumentLoaderServiceTests : AbstractPdbSourceDocumentTest
             using var hash = SHA256.Create();
             var fileHash = hash.ComputeHash(File.ReadAllBytes(sourceFilePath));
 
-            var sourceDocument = new SourceDocument("goo.cs", Text.SourceHashAlgorithms.Default, fileHash.ToImmutableArray(), null, "https://sourcelink");
+            var sourceDocument = new SourceDocument("goo.cs", Text.SourceHashAlgorithms.Default, [.. fileHash], null, "https://sourcelink");
             var result = await service.LoadSourceDocumentAsync(path, sourceDocument, Encoding.UTF8, new TelemetryMessage(CancellationToken.None), useExtendedTimeout: false, CancellationToken.None);
 
             Assert.NotNull(result);

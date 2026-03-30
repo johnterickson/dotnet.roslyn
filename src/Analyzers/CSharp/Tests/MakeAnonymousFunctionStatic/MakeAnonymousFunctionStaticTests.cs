@@ -15,7 +15,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.MakeAnonymousFunctionSt
 using VerifyCS = CSharpCodeFixVerifier<MakeAnonymousFunctionStaticDiagnosticAnalyzer, CSharpMakeAnonymousFunctionStaticCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsMakeAnonymousFunctionStatic)]
-public class MakeAnonymousFunctionStaticTests
+public sealed class MakeAnonymousFunctionStaticTests
 {
     private static async Task TestWithCSharp9Async(string code, string fixedCode)
     {
@@ -33,7 +33,9 @@ public class MakeAnonymousFunctionStaticTests
     [InlineData("delegate (int i) { }")]
     public async Task TestBelowCSharp9(string anonymousFunctionSyntax)
     {
-        var code = $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             using System;
 
             class C
@@ -47,11 +49,7 @@ public class MakeAnonymousFunctionStaticTests
                 {
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = code,
+            """,
             LanguageVersion = LanguageVersion.CSharp8
         }.RunAsync();
     }
@@ -62,7 +60,9 @@ public class MakeAnonymousFunctionStaticTests
     [InlineData("delegate (int i) { }")]
     public async Task TestWithOptionOff(string anonymousFunctionSyntax)
     {
-        var code = $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             using System;
 
             class C
@@ -76,11 +76,7 @@ public class MakeAnonymousFunctionStaticTests
                 {
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = code,
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
             Options =
             {

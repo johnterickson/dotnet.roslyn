@@ -3530,4 +3530,54 @@ compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLib
             }
             """);
     }
+
+    [Fact]
+    public async Task TestCollectionExpressionSpread()
+    {
+        await TestInRegularAndScript1Async("""
+            class C
+            {
+                public void M()
+                {
+                    var v = [.. $$(a ? b : c)];
+                }
+            }
+            """, """
+            class C
+            {
+                public void M()
+                {
+                    var v = [.. a ? b : c];
+                }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/78331")]
+    public async Task TestCollectionExpressionInInitializer()
+    {
+        await TestMissingInRegularAndScriptAsync("""
+            class C
+            {
+                public void M()
+                {
+                    var v = new List<int[]>() { $$([]) };
+                }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/78331")]
+    public async Task TestAttributedLambdaExpressionInInitializer()
+    {
+        await TestMissingInRegularAndScriptAsync("""
+            class C
+            {
+                public void M()
+                {
+                    var v = new List<Action>() { $$([X] () => { }) };
+                }
+            }
+            """);
+    }
 }

@@ -16,7 +16,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.MoveStaticMembers;
 
 [UseExportProvider]
 [Trait(Traits.Feature, Traits.Features.CodeActionsMoveStaticMembers)]
-public class CSharpMoveStaticMembersTests
+public sealed class CSharpMoveStaticMembersTests
 {
     private static readonly TestComposition s_testServices = FeaturesTestCompositions.Features.AddParts(typeof(TestMoveStaticMembersService));
 
@@ -642,16 +642,6 @@ namespace TestNs1
     public async Task TestMoveMethodFileScopedNamespace()
     {
         // We still keep normal namespacing rules in the new file
-        var initialMarkup = @"
-namespace TestNs1;
-
-public class Class1
-{
-    public static int Test[||]Method()
-    {
-        return 0;
-    }
-}";
         var selectedDestinationName = "Class1Helpers";
         var newFileName = "Class1Helpers.cs";
         var selectedMembers = ImmutableArray.Create("TestMethod");
@@ -673,7 +663,16 @@ public class Class1
 }";
         await new Test(selectedDestinationName, selectedMembers, newFileName)
         {
-            TestCode = initialMarkup,
+            TestCode = @"
+namespace TestNs1;
+
+public class Class1
+{
+    public static int Test[||]Method()
+    {
+        return 0;
+    }
+}",
             FixedState =
             {
                 Sources =
@@ -1568,38 +1567,6 @@ namespace TestNs2
     [Fact]
     public async Task TestMoveMethodAndRefactorConflictingName()
     {
-        var initialMarkup = @"
-namespace TestNs1
-{
-    public class Class1
-    {
-        public static int F[||]oo()
-        {
-            return 0;
-        }
-    }
-}
-
-namespace TestNs2
-{
-    using TestNs1;
-
-    class Class2
-    {
-        class Class1Helpers
-        {
-            public static int Foo()
-            {
-                return 1;
-            }
-        }
-        
-        public static int TestMethod2()
-        {
-            return Class1.Foo() + Class1Helpers.Foo();
-        }
-    }
-}";
         var selectedDestinationName = "Class1Helpers";
         var newFileName = "Class1Helpers.cs";
         var selectedMembers = ImmutableArray.Create("Foo");
@@ -1643,7 +1610,38 @@ namespace TestNs2
 }";
         await new Test(selectedDestinationName, selectedMembers, newFileName)
         {
-            TestCode = initialMarkup,
+            TestCode = @"
+namespace TestNs1
+{
+    public class Class1
+    {
+        public static int F[||]oo()
+        {
+            return 0;
+        }
+    }
+}
+
+namespace TestNs2
+{
+    using TestNs1;
+
+    class Class2
+    {
+        class Class1Helpers
+        {
+            public static int Foo()
+            {
+                return 1;
+            }
+        }
+        
+        public static int TestMethod2()
+        {
+            return Class1.Foo() + Class1Helpers.Foo();
+        }
+    }
+}",
             FixedState =
             {
                 Sources =
@@ -3210,7 +3208,9 @@ namespace TestNs1
     [Fact]
     public async Task TestSelectMalformedMethod_NoAction()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 namespace TestNs1
 {
     public class Class1
@@ -3220,78 +3220,71 @@ namespace TestNs1
             return 0;
         }
     }
-}";
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+}",
         }.RunAsync().ConfigureAwait(false);
     }
 
     [Fact]
     public async Task TestSelectMalformedField_NoAction1()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 namespace TestNs1
 {
     public class Class1
     {
         public st[||] {|CS1519:int|} TestField = 0;
     }
-}";
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+}",
         }.RunAsync().ConfigureAwait(false);
     }
 
     [Fact]
     public async Task TestSelectMalformedField_NoAction2()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 namespace TestNs1
 {
     public class Class1
     {
         public st [|{|CS1519:int|} Test|]Field = 0;
     }
-}";
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+}",
         }.RunAsync().ConfigureAwait(false);
     }
 
     [Fact]
     public async Task TestSelectMalformedField_NoAction3()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 namespace TestNs1
 {
     public class Class1
     {
         [|public st {|CS1519:int|} TestField = 0;|]
     }
-}";
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+}",
         }.RunAsync().ConfigureAwait(false);
     }
 
     [Fact]
     public async Task TestSelectMalformedField_NoAction4()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 namespace TestNs1
 {
     public class Class1
     {
         [|publicc {|CS1585:static|} int TestField = 0;|]
     }
-}";
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+}",
         }.RunAsync().ConfigureAwait(false);
     }
 
@@ -3375,15 +3368,13 @@ namespace TestNs1
     [Fact]
     public async Task TestSelectTopLevelStatement_NoAction1()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 using System;
 
 [||]Console.WriteLine(5);
-";
-
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+",
             LanguageVersion = CodeAnalysis.CSharp.LanguageVersion.CSharp10,
             TestState =
             {
@@ -3395,15 +3386,13 @@ using System;
     [Fact]
     public async Task TestSelectTopLevelStatement_NoAction2()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 using System;
 
 [|Console.WriteLine(5);|]
-";
-
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+",
             LanguageVersion = CodeAnalysis.CSharp.LanguageVersion.CSharp10,
             TestState =
             {
@@ -3415,18 +3404,16 @@ using System;
     [Fact]
     public async Task TestSelectTopLevelLocalFunction_NoAction()
     {
-        var initialMarkup = @"
+        await new Test("", [], "")
+        {
+            TestCode = @"
 DoSomething();
 
 static int Do[||]Something()
 {
     return 5;
 }
-";
-
-        await new Test("", ImmutableArray<string>.Empty, "")
-        {
-            TestCode = initialMarkup,
+",
             LanguageVersion = CodeAnalysis.CSharp.LanguageVersion.CSharp10,
             TestState =
             {
@@ -3436,7 +3423,7 @@ static int Do[||]Something()
     }
     #endregion
 
-    private class Test : VerifyCS.Test
+    private sealed class Test : VerifyCS.Test
     {
         public Test(
             string destinationType,
@@ -3472,7 +3459,7 @@ static int Do[||]Something()
             testOptionsService.SelectedMembers = _selection;
             testOptionsService.Filename = _destinationName;
             testOptionsService.CreateNew = _createNew;
-            testOptionsService.ExpectedPrecheckedMembers = _testPreselection ? _selection : ImmutableArray<string>.Empty;
+            testOptionsService.ExpectedPrecheckedMembers = _testPreselection ? _selection : [];
 
             return Task.FromResult<Workspace>(workspace);
         }
@@ -3546,7 +3533,7 @@ static int Do[||]Something()
 
     private static async Task TestNoRefactoringAsync(string initialMarkup)
     {
-        await new Test("", ImmutableArray<string>.Empty, "")
+        await new Test("", [], "")
         {
             TestCode = initialMarkup,
         }.RunAsync().ConfigureAwait(false);

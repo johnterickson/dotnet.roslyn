@@ -4,7 +4,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Shared.Extensions;
 using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Xunit;
@@ -14,7 +13,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Formatting;
 using Verify = CSharpCodeFixVerifier<CodeStyle.CSharpFormattingAnalyzer, CodeStyle.CSharpFormattingCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.Formatting)]
-public class FormattingAnalyzerTests
+public sealed class FormattingAnalyzerTests
 {
     [Fact]
     public async Task TrailingWhitespace()
@@ -255,25 +254,22 @@ class MyClass
     [Fact]
     public async Task TestIncrementalFixesFullLine()
     {
-        var testCode = @"
+        await new Verify.Test
+        {
+            TestCode = @"
 class MyClass
 {
     int Property1$${$$get;$$set;$$}
     int Property2$${$$get;$$}
 }
-";
-        var fixedCode = @"
+",
+            FixedCode = @"
 class MyClass
 {
     int Property1 { get; set; }
     int Property2 { get; }
 }
-";
-
-        await new Verify.Test
-        {
-            TestCode = testCode,
-            FixedCode = fixedCode,
+",
 
             // Each application of a single code fix covers all diagnostics on the same line. In total, two lines
             // require changes so the number of incremental iterations is exactly 2.

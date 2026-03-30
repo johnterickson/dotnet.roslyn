@@ -7,6 +7,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading;
+using Microsoft.CodeAnalysis.Collections;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Roslyn.Utilities;
 
@@ -99,7 +100,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private void EnsureMapAndTypeParameters()
         {
-            if (!_lazyTypeParameters.IsDefault)
+            if (!RoslynImmutableInterlocked.VolatileRead(ref _lazyTypeParameters).IsDefault)
             {
                 return;
             }
@@ -215,6 +216,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         internal sealed override UnmanagedCallersOnlyAttributeData GetUnmanagedCallersOnlyAttributeData(bool forceComplete)
             => this.OriginalDefinition.GetUnmanagedCallersOnlyAttributeData(forceComplete);
 
+        internal sealed override bool HasSpecialNameAttribute => throw ExceptionUtilities.Unreachable();
+
         public sealed override Symbol AssociatedSymbol
         {
             get
@@ -327,6 +330,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 : null;
             return true;
         }
+
+        internal override int TryGetOverloadResolutionPriority()
+            => OriginalDefinition.TryGetOverloadResolutionPriority();
 
         private ImmutableArray<ParameterSymbol> SubstituteParameters()
         {

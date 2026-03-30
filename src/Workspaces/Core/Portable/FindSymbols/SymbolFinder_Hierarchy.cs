@@ -57,7 +57,7 @@ public static partial class SymbolFinder
 
         return results.ToImmutableAndClear();
 
-        async Task FindOverridesAsync(bool allowLooseMatch)
+        async ValueTask FindOverridesAsync(bool allowLooseMatch)
         {
             foreach (var type in derivedTypes)
             {
@@ -183,7 +183,7 @@ public static partial class SymbolFinder
                         }
                     }
 
-                    return builder.Distinct(SymbolEquivalenceComparer.Instance).ToImmutableArray();
+                    return [.. builder.Distinct(SymbolEquivalenceComparer.Instance)];
                 }
             }
 
@@ -380,6 +380,6 @@ public static partial class SymbolFinder
             }
         }
 
-        return results.Distinct(SymbolEquivalenceComparer.Instance).ToImmutableArray();
+        return [.. results.Distinct(SymbolEquivalenceComparer.Instance)];
     }
 }

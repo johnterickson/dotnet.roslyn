@@ -65,7 +65,7 @@ internal sealed class RemoveUnusedReferencesCommandHandler
         _serviceProvider = (IServiceProvider)serviceProvider;
 
         // Hook up the "Remove Unused References" menu command for CPS based managed projects.
-        var menuCommandService = await serviceProvider.GetServiceAsync<IMenuCommandService, IMenuCommandService>(_threadingContext.JoinableTaskFactory, throwOnFailure: false).ConfigureAwait(false);
+        var menuCommandService = await serviceProvider.GetServiceAsync<IMenuCommandService, IMenuCommandService>(throwOnFailure: false, cancellationToken).ConfigureAwait(false);
         if (menuCommandService != null)
         {
             await _threadingContext.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
@@ -170,13 +170,13 @@ internal sealed class RemoveUnusedReferencesCommandHandler
     {
         if (!TryGetPropertyValue(projectHierarchy, ProjectAssetsFilePropertyName, out var projectAssetsFile))
         {
-            return (null, null, ImmutableArray<ReferenceUpdate>.Empty);
+            return (null, null, []);
         }
 
         var projectFilePath = projectHierarchy.TryGetProjectFilePath();
         if (string.IsNullOrEmpty(projectFilePath))
         {
-            return (null, null, ImmutableArray<ReferenceUpdate>.Empty);
+            return (null, null, []);
         }
 
         var solution = _workspace.CurrentSolution;

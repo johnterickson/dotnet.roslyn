@@ -5,7 +5,6 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
-using Microsoft.CodeAnalysis.Editor.InlineRename;
 using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.CodeAnalysis.Test.Utilities;
@@ -26,15 +25,12 @@ public class BasicAutomaticBraceCompletion : AbstractEditorTest
     {
     }
 
-    [IdeTheory, CombinatorialData]
+    [IdeTheory(Skip = "https://github.com/dotnet/roslyn/issues/63576")]
+    [CombinatorialData]
     public async Task Braces_InsertionAndTabCompleting(bool argumentCompletion)
     {
         var globalOptions = await TestServices.Shell.GetComponentModelServiceAsync<IGlobalOptionService>(HangMitigatingCancellationToken);
         globalOptions.SetGlobalOption(CompletionViewOptionsStorage.EnableArgumentCompletionSnippets, LanguageNames.VisualBasic, argumentCompletion);
-
-        // Disable new rename UI for now, it's causing these tests to fail.
-        // https://github.com/dotnet/roslyn/issues/63576
-        globalOptions.SetGlobalOption(InlineRenameUIOptionsStorage.UseInlineAdornment, false);
 
         await SetUpEditorAsync(@"
 Class C
@@ -197,14 +193,9 @@ End Class", HangMitigatingCancellationToken);
         await TestServices.EditorVerifier.CurrentLineTextAsync("        Dim [Dim] As Long$$", assertCaretPosition: true, HangMitigatingCancellationToken);
     }
 
-    [IdeFact]
+    [IdeFact(Skip = "https://github.com/dotnet/roslyn/issues/63576")]
     public async Task DoubleQuote_InsertionAndTabCompletion()
     {
-        // Disable new rename UI for now, it's causing these tests to fail.
-        // https://github.com/dotnet/roslyn/issues/63576
-        var globalOptions = await TestServices.Shell.GetComponentModelServiceAsync<IGlobalOptionService>(HangMitigatingCancellationToken);
-        globalOptions.SetGlobalOption(InlineRenameUIOptionsStorage.UseInlineAdornment, false);
-
         await SetUpEditorAsync(@"
 Class C
     Sub Goo()

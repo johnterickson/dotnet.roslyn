@@ -14,6 +14,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeGeneration;
 using Microsoft.CodeAnalysis.CodeRefactorings;
 using Microsoft.CodeAnalysis.CodeStyle;
+using Microsoft.CodeAnalysis.Collections;
 using Microsoft.CodeAnalysis.CSharp.Extensions;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
@@ -31,15 +32,11 @@ using static InitializeParameterHelpersCore;
 using static SyntaxFactory;
 
 [ExportCodeRefactoringProvider(LanguageNames.CSharp, Name = PredefinedCodeRefactoringProviderNames.InitializeMemberFromPrimaryConstructorParameter), Shared]
-internal sealed partial class CSharpInitializeMemberFromPrimaryConstructorParameterCodeRefactoringProvider
+[method: ImportingConstructor]
+[method: SuppressMessage("RoslynDiagnosticsReliability", "RS0033:Importing constructor should be [Obsolete]", Justification = "Used in test code: https://github.com/dotnet/roslyn/issues/42814")]
+internal sealed partial class CSharpInitializeMemberFromPrimaryConstructorParameterCodeRefactoringProvider()
     : CodeRefactoringProvider
 {
-    [ImportingConstructor]
-    [SuppressMessage("RoslynDiagnosticsReliability", "RS0033:Importing constructor should be [Obsolete]", Justification = "Used in test code: https://github.com/dotnet/roslyn/issues/42814")]
-    public CSharpInitializeMemberFromPrimaryConstructorParameterCodeRefactoringProvider()
-    {
-    }
-
     public override async Task ComputeRefactoringsAsync(CodeRefactoringContext context)
     {
         var (document, _, cancellationToken) = context;
@@ -90,6 +87,7 @@ internal sealed partial class CSharpInitializeMemberFromPrimaryConstructorParame
 
             var parameterWords = parameterNameParts.BaseNameParts;
             var containingType = parameter.ContainingType;
+            var initializeParameterService = document.GetRequiredLanguageService<IInitializeParameterService>();
 
             // Walk through the naming rules against this parameter's name to see what name the user would like for
             // it as a member in this type.  Note that we have some fallback rules that use the standard conventions
@@ -119,7 +117,7 @@ internal sealed partial class CSharpInitializeMemberFromPrimaryConstructorParame
                         // We also allow assigning into a property of the form `=> throw new
                         // NotImplementedException()`. That way users can easily spit out those methods, but then
                         // convert them to be normal properties with ease.
-                        if (IsThrowNotImplementedProperty(compilation, property, cancellationToken))
+                        if (initializeParameterService.IsThrowNotImplementedProperty(compilation, property, cancellationToken))
                             return property;
 
                         if (property.IsWritableInConstructor())
@@ -140,7 +138,7 @@ internal sealed partial class CSharpInitializeMemberFromPrimaryConstructorParame
             // Found a field/property that this parameter should be assigned to. Just offer the simple assignment to it.
             yield return CreateCodeAction(
                 string.Format(fieldOrProperty.Kind == SymbolKind.Field ? FeaturesResources.Initialize_field_0 : FeaturesResources.Initialize_property_0, fieldOrProperty.Name),
-                cancellationToken => UpdateExistingMemberAsync(document, parameter, fieldOrProperty, cancellationToken));
+                cancellationToken => AddAssignmentForPrimaryConstructorAsync(document, parameter, fieldOrProperty, cancellationToken));
         }
 
         IEnumerable<CodeAction> HandleNoExistingFieldOrProperty()

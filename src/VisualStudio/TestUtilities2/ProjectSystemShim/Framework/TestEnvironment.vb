@@ -22,7 +22,6 @@ Imports Microsoft.VisualStudio.LanguageServices.Implementation.Library.ObjectBro
 Imports Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 Imports Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem.CPS
 Imports Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem.Legacy
-Imports Microsoft.VisualStudio.LanguageServices.Implementation.TaskList
 Imports Microsoft.VisualStudio.LanguageServices.UnitTests.CodeModel
 Imports Microsoft.VisualStudio.LanguageServices.UnitTests.Diagnostics
 Imports Microsoft.VisualStudio.Shell.Interop
@@ -49,7 +48,7 @@ Namespace Microsoft.VisualStudio.LanguageServices.UnitTests.ProjectSystemShim.Fr
         '        GetType(MockDiagnosticUpdateSourceRegistrationService),
         '        GetType(MockWorkspaceEventListenerProvider))
 
-        Private Shared ReadOnly s_composition As TestComposition = EditorTestCompositions.EditorFeaturesWpf _
+        Private Shared ReadOnly s_composition As TestComposition = EditorTestCompositions.EditorFeatures _
             .AddParts(
                 GetType(FileChangeWatcherProvider),
                 GetType(MockVisualStudioWorkspace),
@@ -63,7 +62,7 @@ Namespace Microsoft.VisualStudio.LanguageServices.UnitTests.ProjectSystemShim.Fr
                 GetType(CPSProjectFactory),
                 GetType(VisualStudioRuleSetManagerFactory),
                 GetType(VisualStudioMetadataServiceFactory),
-                GetType(VisualStudioMetadataReferenceManagerFactory),
+                GetType(VisualStudioMetadataReferenceManager),
                 GetType(MockWorkspaceEventListenerProvider),
                 GetType(HierarchyItemToProjectIdMap),
                 GetType(DiagnosticAnalyzerService))
@@ -123,7 +122,7 @@ Namespace Microsoft.VisualStudio.LanguageServices.UnitTests.ProjectSystemShim.Fr
                 Throw New NotImplementedException()
             End Function
 
-            Friend Overrides Function GetBrowseObject(symbolListItem As SymbolListItem) As Object
+            Friend Overrides Function GetBrowseObjectAsync(symbolListItem As SymbolListItem, cancellationToken As CancellationToken) As Task(Of Object)
                 Throw New NotImplementedException()
             End Function
         End Class

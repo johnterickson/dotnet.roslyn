@@ -7,12 +7,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Collections;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.VisualStudio.LanguageServices.CSharp.LanguageService;
 using Microsoft.VisualStudio.LanguageServices.Implementation.F1Help;
 using Microsoft.VisualStudio.LanguageServices.UnitTests;
 using Roslyn.Test.Utilities;
-using Roslyn.Utilities;
 using Xunit;
 
 namespace Microsoft.VisualStudio.LanguageServices.CSharp.UnitTests.F1Help;
@@ -1995,6 +1995,17 @@ public class C
     }
 
     [Fact]
+    public async Task TestScoped()
+    {
+        await Test_KeywordAsync("""
+            sc[||]oped var r = new R();
+            ref struct R
+            {
+            }
+            """, "scoped");
+    }
+
+    [Fact]
     public async Task TestDefaultConstraint()
     {
         await Test_KeywordAsync("""
@@ -2299,5 +2310,14 @@ public class C
             """
             #pragma warning dis[||]able CS0312
             """, "#disable");
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/68009")]
+    public async Task TestGlobalUsing1()
+    {
+        await Test_KeywordAsync(
+            """
+            [||]global using System;
+            """, "global-using");
     }
 }

@@ -9,14 +9,13 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.Contracts.EditAndContinue;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp.Test.Utilities;
 using Microsoft.CodeAnalysis.Differencing;
 using Microsoft.CodeAnalysis.EditAndContinue;
-using Microsoft.CodeAnalysis.Contracts.EditAndContinue;
 using Microsoft.CodeAnalysis.EditAndContinue.UnitTests;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.CodeAnalysis.Text;
@@ -27,7 +26,7 @@ using Xunit;
 namespace Microsoft.CodeAnalysis.CSharp.EditAndContinue.UnitTests;
 
 [UseExportProvider]
-public class CSharpEditAndContinueAnalyzerTests
+public sealed class CSharpEditAndContinueAnalyzerTests
 {
     private static readonly TestComposition s_composition = FeaturesTestCompositions.Features;
 
@@ -37,13 +36,9 @@ public class CSharpEditAndContinueAnalyzerTests
         => new(composition: s_composition);
 
     private static Solution AddDefaultTestProject(Solution solution, string source)
-    {
-        var projectId = ProjectId.CreateNewId();
-
-        return solution.
-            AddProject(ProjectInfo.Create(projectId, VersionStamp.Create(), "proj", "proj", LanguageNames.CSharp)).GetProject(projectId).
-            AddDocument("test.cs", SourceText.From(source, Encoding.UTF8), filePath: Path.Combine(TempRoot.Root, "test.cs")).Project.Solution;
-    }
+        => solution.
+            AddTestProject("proj", LanguageNames.CSharp).
+            AddTestDocument(source, path: Path.Combine(TempRoot.Root, "test.cs")).Project.Solution;
 
     private static void TestSpans(string source, Func<SyntaxNode, bool> hasLabel)
     {
@@ -122,10 +117,11 @@ public class CSharpEditAndContinueAnalyzerTests
         EditAndContinueCapabilities capabilities = EditAndContinueTestVerifier.Net5RuntimeCapabilities,
         ImmutableArray<ActiveStatementLineSpan> newActiveStatementSpans = default)
     {
-        var analyzer = new CSharpEditAndContinueAnalyzer();
+        var analyzer = oldProject.Services.GetRequiredService<IEditAndContinueAnalyzer>();
         var baseActiveStatements = AsyncLazy.Create(activeStatementMap ?? ActiveStatementsMap.Empty);
         var lazyCapabilities = AsyncLazy.Create(capabilities);
-        return await analyzer.AnalyzeDocumentAsync(oldProject, baseActiveStatements, newDocument, newActiveStatementSpans.NullToEmpty(), lazyCapabilities, CancellationToken.None);
+        var log = new TraceLog("Test");
+        return await analyzer.AnalyzeDocumentAsync(newDocument.Id, oldProject, newDocument.Project, baseActiveStatements, newActiveStatementSpans.NullToEmpty(), lazyCapabilities, log, CancellationToken.None);
     }
 
     #endregion
@@ -318,7 +314,7 @@ class C
         var baseActiveStatements = new ActiveStatementsMap(
             ImmutableDictionary.CreateRange(
             [
-                KeyValuePairUtil.Create(newDocument.FilePath, ImmutableArray.Create(
+                KeyValuePair.Create(newDocument.FilePath, ImmutableArray.Create(
                     new ActiveStatement(
                         new ActiveStatementId(0),
                         ActiveStatementFlags.LeafFrame,
@@ -454,14 +450,12 @@ class C
 ";
         var experimentalFeatures = new Dictionary<string, string>(); // no experimental features to enable
         var experimental = TestOptions.Regular.WithFeatures(experimentalFeatures);
-        var root = SyntaxFactory.ParseCompilationUnit(source, options: experimental);
 
         using var workspace = CreateWorkspace();
 
-        var projectId = ProjectId.CreateNewId();
         var oldSolution = workspace.CurrentSolution.
-            AddProject(ProjectInfo.Create(projectId, VersionStamp.Create(), "proj", "proj", LanguageNames.CSharp)).GetProject(projectId).
-            AddDocument("test.cs", root, filePath: Path.Combine(TempRoot.Root, "test.cs")).Project.Solution;
+            AddTestProject("proj", LanguageNames.CSharp).WithParseOptions(experimental).
+            AddTestDocument(source, path: Path.Combine(TempRoot.Root, "test.cs")).Project.Solution;
 
         var oldProject = oldSolution.Projects.Single();
         var oldDocument = oldProject.Documents.Single();
@@ -749,15 +743,17 @@ class D
         var baseActiveStatements = AsyncLazy.Create(ActiveStatementsMap.Empty);
         var capabilities = AsyncLazy.Create(EditAndContinueTestVerifier.Net5RuntimeCapabilities);
 
-        var analyzer = new CSharpEditAndContinueAnalyzer(node =>
+        var analyzer = Assert.IsType<CSharpEditAndContinueAnalyzer>(oldProject.Services.GetRequiredService<IEditAndContinueAnalyzer>());
+        analyzer.GetTestAccessor().FaultInjector = node =>
         {
             if (node is CompilationUnitSyntax)
             {
                 throw outOfMemory ? new OutOfMemoryException() : new NullReferenceException("NullRef!");
             }
-        });
+        };
 
-        var result = await analyzer.AnalyzeDocumentAsync(oldProject, baseActiveStatements, newDocument, [], capabilities, CancellationToken.None);
+        var log = new TraceLog("Test");
+        var result = await analyzer.AnalyzeDocumentAsync(newDocument.Id, oldProject, newDocument.Project, baseActiveStatements, [], capabilities, log, CancellationToken.None);
 
         var expectedDiagnostic = outOfMemory
             ? $"ENC0089: {string.Format(FeaturesResources.Modifying_source_file_0_requires_restarting_the_application_because_the_file_is_too_big, filePath)}"
@@ -766,7 +762,7 @@ class D
             : $"ENC0080: {string.Format(FeaturesResources.Modifying_source_file_0_requires_restarting_the_application_due_to_internal_error_1, filePath, "System.NullReferenceException: NullRef!\n")}".Split('\n').First();
 
         AssertEx.Equal([expectedDiagnostic], result.RudeEdits.Select(d => d.ToDiagnostic(newSyntaxTree))
-            .Select(d => $"{d.Id}: {d.GetMessage().Split(new[] { Environment.NewLine }, StringSplitOptions.None).First()}"));
+            .Select(d => $"{d.Id}: {d.GetMessage().Split([Environment.NewLine], StringSplitOptions.None).First()}"));
     }
 
     [Fact]

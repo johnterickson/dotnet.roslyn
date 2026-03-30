@@ -90,6 +90,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             get { return ImmutableArray<CustomModifier>.Empty; }
         }
 
+        internal override bool HasEnumeratorCancellationAttribute
+        {
+            get { return false; }
+        }
+
         public sealed override bool IsThis
         {
             get { return true; }
@@ -179,7 +184,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             {
                 var scope = _containingType.IsStructType() ? ScopedKind.ScopedRef : ScopedKind.None;
                 if (scope != ScopedKind.None &&
-                    HasUnscopedRefAttribute)
+                    HasUnscopedRefAttribute &&
+                    UseUpdatedEscapeRules)
                 {
                     return ScopedKind.None;
                 }

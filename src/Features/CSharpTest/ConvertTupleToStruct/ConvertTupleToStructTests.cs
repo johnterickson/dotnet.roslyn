@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeStyle;
 using Microsoft.CodeAnalysis.ConvertTupleToStruct;
@@ -28,7 +27,7 @@ using VerifyCS = CSharpCodeRefactoringVerifier<CSharpConvertTupleToStructCodeRef
 
 [UseExportProvider]
 [Trait(Traits.Feature, Traits.Features.CodeActionsConvertTupleToStruct)]
-public class ConvertTupleToStructTests
+public sealed class ConvertTupleToStructTests
 {
     private static OptionsCollection PreferImplicitTypeWithInfo()
         => new(LanguageNames.CSharp)
@@ -384,7 +383,7 @@ public class ConvertTupleToStructTests
         var symbolSpecification = new SymbolSpecification(
             Guid.NewGuid(),
             "Name2",
-            ImmutableArray.Create(new SymbolSpecification.SymbolKindOrTypeKind(SymbolKind.Parameter)),
+            [new SymbolSpecification.SymbolKindOrTypeKind(SymbolKind.Parameter)],
             accessibilityList: default,
             modifiers: default);
 
@@ -404,9 +403,9 @@ public class ConvertTupleToStructTests
         };
 
         var info = new NamingStylePreferences(
-            ImmutableArray.Create(symbolSpecification),
-            ImmutableArray.Create(namingStyle),
-            ImmutableArray.Create(namingRule));
+            [symbolSpecification],
+            [namingStyle],
+            [namingRule]);
 
         var options = PreferImplicitTypeWithInfo();
         options.Add(NamingStyleOptions.NamingPreferences, info);
@@ -2273,7 +2272,9 @@ public class ConvertTupleToStructTests
     [ConditionalTheory(typeof(DesktopOnly)), CombinatorialData]
     public async Task TestDuplicatedName(TestHost host)
     {
-        var text = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class Test
             {
                 void Method()
@@ -2281,8 +2282,8 @@ public class ConvertTupleToStructTests
                     var t1 = [||](a: 1, a: 2);
                 }
             }
-            """;
-        var expected = """
+            """,
+            FixedCode = """
             class Test
             {
                 void Method()
@@ -2333,12 +2334,7 @@ public class ConvertTupleToStructTests
                     return new NewStruct(value.a, value.a);
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = text,
-            FixedCode = expected,
+            """,
             TestHost = host,
             ExpectedDiagnostics =
             {

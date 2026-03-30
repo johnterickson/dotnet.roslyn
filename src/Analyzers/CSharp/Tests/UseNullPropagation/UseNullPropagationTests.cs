@@ -2,8 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Shared.Extensions;
 using Microsoft.CodeAnalysis.CSharp.UseNullPropagation;
 using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
@@ -18,9 +20,13 @@ using VerifyCS = CSharpCodeFixVerifier<
     CSharpUseNullPropagationCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseNullPropagation)]
-public partial class UseNullPropagationTests
+public sealed partial class UseNullPropagationTests
 {
-    private static async Task TestInRegularAndScript1Async(string testCode, string fixedCode, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary)
+    private static async Task TestInRegularAndScript1Async(
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string testCode,
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string fixedCode,
+        OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary,
+        LanguageVersion languageVersion = LanguageVersion.CSharp9)
     {
         await new VerifyCS.Test
         {
@@ -30,7 +36,7 @@ public partial class UseNullPropagationTests
             // by just rewriting `x.Y` into `x?.Y`.  That is not correct.  the RHS of the `?` should `.Y()` not
             // `.Y`.
             CodeActionValidationMode = CodeActionValidationMode.None,
-            LanguageVersion = LanguageVersion.CSharp9,
+            LanguageVersion = languageVersion,
             TestState =
             {
                 OutputKind = outputKind,
@@ -38,7 +44,9 @@ public partial class UseNullPropagationTests
         }.RunAsync();
     }
 
-    private static async Task TestMissingInRegularAndScriptAsync(string testCode, LanguageVersion languageVersion = LanguageVersion.CSharp9)
+    private static async Task TestMissingInRegularAndScriptAsync(
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string testCode,
+        LanguageVersion languageVersion = LanguageVersion.CSharp9)
     {
         await new VerifyCS.Test
         {
@@ -2356,6 +2364,42 @@ public partial class UseNullPropagationTests
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66036")]
+    public async Task TestElseIfStatement_NullAssignment1()
+    {
+        await TestInRegularAndScript1Async("""
+            class C
+            {
+                void M(string s)
+                {
+                    if (true)
+                    {
+                    }
+                    else [|if|] (s != null)
+                    {
+                        s.ToString();
+                        s = null;
+                    }
+                }
+            }
+            """, """
+            class C
+            {
+                void M(string s)
+                {
+                    if (true)
+                    {
+                    }
+                    else
+                    {
+                        s?.ToString();
+                        s = null;
+                    }
+                }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66036")]
     public async Task TestElseIfStatement2()
     {
         await TestInRegularAndScript1Async("""
@@ -2507,5 +2551,307 @@ public partial class UseNullPropagationTests
                 }
             }
             """);
+    }
+
+    [Fact]
+    public async Task TestNullConditionalAssignment1()
+    {
+        await TestInRegularAndScript1Async(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    [|if|] (c != null)
+                        c.x = 1;
+                }
+            }
+            """,
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    c?.x = 1;
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNullConditionalAssignment2()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    if (c != null)
+                        c.x = 1;
+                }
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task TestNullAssignmentAfterOperation1()
+    {
+        await TestInRegularAndScript1Async(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    [|if|] (c != null)
+                    {
+                        c.x = 1;
+                        c = null;
+                    }
+                }
+            }
+            """,
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    c?.x = 1;
+                    c = null;
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNullAssignmentAfterOperation2()
+    {
+        await TestInRegularAndScript1Async(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    [|if|] (c != null)
+                    {
+                        c.x = 1;
+                        // Leading comment.
+                        c = null;
+                    }
+                }
+            }
+            """,
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    c?.x = 1;
+                    // Leading comment.
+                    c = null;
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNotNullAssignmentAfterOperation1()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    if (c != null)
+                    {
+                        c.x = 1;
+                        return;
+                    }
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNotNullAssignmentAfterOperation2()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c)
+                {
+                    if (c != null)
+                    {
+                        c.x = 1;
+                        c = new();
+                    }
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNotNullAssignmentAfterOperation3()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                int x;
+
+                void M(C c, C d)
+                {
+                    if (c != null)
+                    {
+                        c.x = 1;
+                        d = null;
+                    }
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNotNullAssignmentAfterOperation4()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                C c;
+
+                void M(C c)
+                {
+                    if (c != null)
+                    {
+                        c.c = null;
+                        c.c = null;
+                    }
+                }
+            }
+            """,
+            languageVersion: LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNullAssignmentAfterOperation_TopLevel1()
+    {
+        await TestInRegularAndScript1Async(
+            """
+            using System;
+            
+            C c = null;
+            [|if|] (c != null)
+            {
+                c.x = 1;
+                c = null;
+            }
+
+            class C
+            {
+                public int x;
+            }
+            """,
+            """
+            using System;
+            
+            C c = null;
+
+            c?.x = 1;
+            c = null;
+
+            class C
+            {
+                public int x;
+            }
+            """,
+            OutputKind.ConsoleApplication,
+            LanguageVersionExtensions.CSharpNext);
+    }
+
+    [Fact]
+    public async Task TestNullAssignmentAfterOperation_TopLevel2()
+    {
+        await TestInRegularAndScript1Async(
+            """
+            using System;
+            
+            C c = null;
+            [|if|] (c != null)
+            {
+                c.x = 1;
+                // Comment
+                c = null;
+            }
+
+            class C
+            {
+                public int x;
+            }
+            """,
+            """
+            using System;
+            
+            C c = null;
+
+            c?.x = 1;
+            // Comment
+            c = null;
+
+            class C
+            {
+                public int x;
+            }
+            """,
+            OutputKind.ConsoleApplication,
+            LanguageVersionExtensions.CSharpNext);
     }
 }

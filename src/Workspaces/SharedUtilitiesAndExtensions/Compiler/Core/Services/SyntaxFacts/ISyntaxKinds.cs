@@ -56,6 +56,7 @@ internal interface ISyntaxKinds
     int? GlobalStatement { get; }
     int IfKeyword { get; }
     int NewKeyword { get; }
+    int PartialKeyword { get; }
     int TrueKeyword { get; }
     int UsingKeyword { get; }
 
@@ -139,6 +140,7 @@ internal interface ISyntaxKinds
     int CollectionInitializerExpression { get; }
     int ConditionalAccessExpression { get; }
     int ConditionalExpression { get; }
+    int? FieldExpression { get; }
     int? ImplicitArrayCreationExpression { get; }
     int? ImplicitObjectCreationExpression { get; }
     int? IndexExpression { get; }
@@ -157,6 +159,7 @@ internal interface ISyntaxKinds
     int? RefExpression { get; }
     int ReferenceEqualsExpression { get; }
     int ReferenceNotEqualsExpression { get; }
+    int SimpleAssignmentExpression { get; }
     int SimpleMemberAccessExpression { get; }
     int? SuppressNullableWarningExpression { get; }
     int TernaryConditionalExpression { get; }

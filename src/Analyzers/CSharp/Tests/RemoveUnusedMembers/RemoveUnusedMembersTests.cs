@@ -20,7 +20,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     CSharpRemoveUnusedMembersCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsRemoveUnusedMembers)]
-public class RemoveUnusedMembersTests
+public sealed class RemoveUnusedMembersTests
 {
     [Theory, CombinatorialData]
     public void TestStandardProperty(AnalyzerProperty property)
@@ -431,13 +431,11 @@ public class RemoveUnusedMembersTests
     [Fact]
     public async Task EntryPointMethodNotFlagged_06()
     {
-        var code = """
-            return 0;
-            """;
-
         await new VerifyCS.Test
         {
-            TestCode = code,
+            TestCode = """
+            return 0;
+            """,
             ExpectedDiagnostics =
             {
                 // /0/Test0.cs(2,1): error CS8805: Program using top-level statements must be an executable.
@@ -1295,15 +1293,16 @@ public class RemoveUnusedMembersTests
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/31581")]
     public async Task MethodInNameOf()
     {
-        var code = """
-            class MyClass
-            {
-                private void M() { }
-                private string _goo = nameof(M);
-            }
-            """;
-
-        await VerifyCS.VerifyCodeFixAsync(code, code);
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                class MyClass
+                {
+                    private void M() { }
+                    public string _goo = nameof(M);
+                }
+                """,
+        }.RunAsync();
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/33765")]
@@ -2187,33 +2186,30 @@ public class RemoveUnusedMembersTests
         [CombinatorialValues("[|_bar|]", "[|_bar|] = 2")] string secondField,
         [CombinatorialValues(0, 1)] int diagnosticIndex)
     {
-        var source = $$"""
-            class MyClass
-            {
-                private int {{firstField}}, {{secondField}};
-            }
-            """;
         var fixedSource = $$"""
             class MyClass
             {
                 private int {{(diagnosticIndex == 0 ? secondField : firstField)}};
             }
             """;
-        var batchFixedSource = """
-            class MyClass
-            {
-            }
-            """;
-
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = $$"""
+            class MyClass
+            {
+                private int {{firstField}}, {{secondField}};
+            }
+            """,
             FixedState =
             {
                 Sources = { fixedSource },
                 MarkupHandling = MarkupMode.Allow,
             },
-            BatchFixedCode = batchFixedSource,
+            BatchFixedCode = """
+            class MyClass
+            {
+            }
+            """,
             CodeFixTestBehaviors = CodeFixTestBehaviors.FixOne,
             DiagnosticSelector = fixableDiagnostics => fixableDiagnostics[diagnosticIndex],
         }.RunAsync();
@@ -3362,6 +3358,196 @@ public class RemoveUnusedMembersTests
                 struct S
                 {
                     private int i;
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/54972")]
+    public async Task TestNameof1()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                class Program
+                {
+                    private int [|unused|];
+
+                    static void Main(string[] args)
+                    {
+                        Console.WriteLine(nameof(Main));
+                    }
+                }
+                """,
+            FixedCode = """
+                using System;
+
+                class Program
+                {
+                    static void Main(string[] args)
+                    {
+                        Console.WriteLine(nameof(Main));
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/54972")]
+    public async Task TestNameof2()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                class Program
+                {
+                    private int used;
+
+                    static void Main(string[] args)
+                    {
+                        Console.WriteLine(nameof(used));
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/54972")]
+    public async Task TestNameof3()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                class Program
+                {
+                    private void M() { }
+                    private void M(int i) { }
+
+                    static void Main(string[] args)
+                    {
+                        Console.WriteLine(nameof(M));
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71847")]
+    public async Task TestRefFieldOnlyWrittenTo()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                using System.Runtime.CompilerServices;
+
+                public ref struct TestStruct
+                {
+                    private ref readonly byte m_toPin;
+                    private ref IntPtr m_toAssignPin;
+                    private IntPtr value;
+                    public void FromManaged(Span<byte> toPin)
+                    {
+                        m_toPin = ref toPin.GetPinnableReference();
+                        m_toAssignPin = ref Unsafe.AsRef(ref value);
+                    }
+
+                    public unsafe void ToUnmanaged()
+                    {
+                        m_toAssignPin = (IntPtr)Unsafe.AsPointer(ref Unsafe.AsRef(in m_toPin));
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/71847")]
+    public async Task TestRefFieldNotReadOrWritten()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                using System.Runtime.CompilerServices;
+
+                public ref struct TestStruct
+                {
+                    private ref readonly byte m_toPin;
+                    private ref IntPtr [|m_toAssignPin|];
+
+                    public void FromManaged(Span<byte> toPin)
+                    {
+                        m_toPin = ref toPin.GetPinnableReference();
+                    }
+                
+                    public unsafe void ToUnmanaged()
+                    {
+                        _ = (IntPtr)Unsafe.AsPointer(ref Unsafe.AsRef(in m_toPin));
+                    }
+                }
+                """,
+            FixedCode = """
+                using System;
+                using System.Runtime.CompilerServices;
+
+                public ref struct TestStruct
+                {
+                    private ref readonly byte m_toPin;
+
+                    public void FromManaged(Span<byte> toPin)
+                    {
+                        m_toPin = ref toPin.GetPinnableReference();
+                    }
+                
+                    public unsafe void ToUnmanaged()
+                    {
+                        _ = (IntPtr)Unsafe.AsPointer(ref Unsafe.AsRef(in m_toPin));
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77251")]
+    public async Task TestRefFieldWrittenNotRead()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                public readonly ref struct RefScope<T>
+                {
+                    public RefScope(ref T originalvalue, T newvalue)
+                    {
+                        _OriginalValue = originalvalue;
+                        _Reference = ref originalvalue;
+                        originalvalue = newvalue;
+                    }
+
+                    readonly ref T _Reference; // Should get no diagnostic here.
+                    readonly T _OriginalValue;
+
+                    public void Dispose()
+                    {
+                        _Reference = _OriginalValue;
+                    }
                 }
                 """,
             LanguageVersion = LanguageVersion.CSharp13,

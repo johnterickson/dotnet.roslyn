@@ -16,7 +16,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     ConvertSwitchStatementToExpressionCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsConvertSwitchStatementToExpression)]
-public class ConvertSwitchStatementToExpressionFixAllTests
+public sealed class ConvertSwitchStatementToExpressionFixAllTests
 {
     [Fact]
     public async Task TestNested_01()
@@ -171,7 +171,9 @@ public class ConvertSwitchStatementToExpressionFixAllTests
     [Fact]
     public async Task TestNested_02()
     {
-        var input = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class Program
             {
                 System.Func<int> M(int i, int j)
@@ -191,8 +193,8 @@ public class ConvertSwitchStatementToExpressionFixAllTests
                     }
                 }
             }
-            """;
-        var expected = """
+            """,
+            FixedCode = """
             class Program
             {
                 System.Func<int> M(int i, int j)
@@ -213,12 +215,7 @@ public class ConvertSwitchStatementToExpressionFixAllTests
                     };
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = input,
-            FixedCode = expected,
+            """,
             NumberOfFixAllIterations = 2,
         }.RunAsync();
     }

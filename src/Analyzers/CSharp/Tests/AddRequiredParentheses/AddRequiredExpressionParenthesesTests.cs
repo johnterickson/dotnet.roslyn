@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#nullable disable
-
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.AddRequiredParentheses;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -12,19 +10,16 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Diagnostics;
 using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
+using Roslyn.Test.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.AddRequiredParentheses;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsAddRequiredParentheses)]
-public partial class AddRequiredExpressionParenthesesTests : AbstractCSharpDiagnosticProviderBasedUserDiagnosticTest_NoEditor
+public sealed partial class AddRequiredExpressionParenthesesTests(ITestOutputHelper logger)
+    : AbstractCSharpDiagnosticProviderBasedUserDiagnosticTest_NoEditor(logger)
 {
-    public AddRequiredExpressionParenthesesTests(ITestOutputHelper logger)
-      : base(logger)
-    {
-    }
-
     internal override (DiagnosticAnalyzer, CodeFixProvider) CreateDiagnosticProviderAndFixer(Workspace workspace)
         => (new CSharpAddRequiredExpressionParenthesesDiagnosticAnalyzer(), new AddRequiredParenthesesCodeFixProvider());
 
@@ -427,16 +422,25 @@ public partial class AddRequiredExpressionParenthesesTests : AbstractCSharpDiagn
             """, RequireRelationalBinaryParenthesesForClarity);
     }
 
-    [Fact]
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/78841")]
     public async Task TestCoalescePrecedence1()
     {
-        await TestMissingAsync(
+        await TestAsync(
             """
             class C
             {
                 void M()
                 {
                     int x = a $$+ b ?? c;
+                }
+            }
+            """,
+            """
+            class C
+            {
+                void M()
+                {
+                    int x = (a + b) ?? c;
                 }
             }
             """, RequireAllParenthesesForClarity);

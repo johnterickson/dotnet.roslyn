@@ -8,8 +8,7 @@ using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Indentation;
 using Microsoft.CodeAnalysis.CodeStyle;
 
-#if CODE_STYLE
-using WorkspacesResources = Microsoft.CodeAnalysis.CodeStyleResources;
+#if !WORKSPACE
 using PublicIndentStyle = Microsoft.CodeAnalysis.Formatting.FormattingOptions2.IndentStyle;
 #else
 using PublicIndentStyle = Microsoft.CodeAnalysis.Formatting.FormattingOptions.IndentStyle;
@@ -62,7 +61,8 @@ internal sealed partial class FormattingOptions2
     public static PerLanguageOption2<IndentStyle> SmartIndent = new PerLanguageOption2<IndentStyle>(
         "smart_indent",
         defaultValue: IndentationOptions.DefaultIndentStyle,
-        group: FormattingOptionGroups.IndentationAndSpacing)
+        group: FormattingOptionGroups.IndentationAndSpacing,
+        serializer: EditorConfigValueSerializer.CreateSerializerForEnum<IndentStyle>())
         .WithPublicOption(PublicFeatureName, "SmartIndent", static value => (PublicIndentStyle)value, static value => (IndentStyle)value);
 
     /// <summary>

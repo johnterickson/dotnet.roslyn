@@ -3,11 +3,10 @@
 ' See the LICENSE file in the project root for more information.
 
 Imports System.Collections.ObjectModel
-Imports System.Threading
+Imports Microsoft.CodeAnalysis.Collections
 Imports Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
 Imports Microsoft.CodeAnalysis.Editor.Implementation.InlineRename.HighlightTags
 Imports Microsoft.CodeAnalysis.Editor.UnitTests.Extensions
-Imports Microsoft.CodeAnalysis.Editor.UnitTests.Workspaces
 Imports Microsoft.CodeAnalysis.Rename
 Imports Microsoft.CodeAnalysis.Text.Shared.Extensions
 Imports Microsoft.VisualStudio.Text
@@ -15,7 +14,6 @@ Imports Microsoft.VisualStudio.Text.Editor
 Imports Microsoft.VisualStudio.Text.Editor.Commanding.Commands
 Imports Microsoft.VisualStudio.Text.Operations
 Imports Microsoft.VisualStudio.Text.Tagging
-Imports Roslyn.Utilities
 
 Namespace Microsoft.CodeAnalysis.Editor.UnitTests.Rename
     <[UseExportProvider]>
@@ -352,7 +350,7 @@ public class Class1
     void Test(int i) {{ }}
     void M()
     {{
-{{|conflict:{{|conflict:<<<<<<< {String.Format(WorkspacesResources.Unmerged_change_from_project_0, "CSharpAssembly1")}, {WorkspacesResources.Before_colon}
+{{|conflict:{{|conflict:<<<<<<< {String.Format(WorkspacesResources.TODO_Unmerged_change_from_project_0, "CSharpAssembly1")}, {WorkspacesResources.Before_colon}
         Test(5);
 =======
         Test((long)5);
@@ -406,7 +404,7 @@ public class Class1
                 textBuffer.Replace(New Span(location, 1), "B")
                 Await WaitForRename(workspace)
 
-                Dim conflictDocument = workspace.Documents.Single(Function(d) d.FilePath = "B.cs")
+                Dim conflictDocument = workspace.Documents.Single(Function(d) d.Name = "B.cs")
                 Dim expectedSpans = GetAnnotatedSpans("conflict", conflictDocument)
                 Dim taggedSpans = GetTagsOfType(RenameConflictTag.Instance, renameService, conflictDocument.GetTextBuffer())
                 Assert.Equal(expectedSpans, taggedSpans)

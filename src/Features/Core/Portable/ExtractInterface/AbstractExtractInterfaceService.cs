@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeCleanup;
@@ -15,7 +14,6 @@ using Microsoft.CodeAnalysis.CodeGeneration;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host;
-using Microsoft.CodeAnalysis.LanguageService;
 using Microsoft.CodeAnalysis.Notification;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
@@ -91,34 +89,38 @@ internal abstract class AbstractExtractInterfaceService : ILanguageService
         }
 
         var semanticModel = await document.GetRequiredSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel.GetDeclaredSymbol(typeNode, cancellationToken) is not INamedTypeSymbol typeToExtractFrom)
+        if (semanticModel.GetDeclaredSymbol(typeNode, cancellationToken) is not INamedTypeSymbol { TypeKind: not TypeKind.Extension } typeToExtractFrom)
         {
             var errorMessage = FeaturesResources.Could_not_extract_interface_colon_The_selection_is_not_inside_a_class_interface_struct;
             return new ExtractInterfaceTypeAnalysisResult(errorMessage);
         }
 
-        var extractableMembers = typeToExtractFrom.GetMembers().Where(IsExtractableMember);
+        var extractableMembers = typeToExtractFrom.GetMembers().WhereAsArray(IsExtractableMember);
         if (!extractableMembers.Any())
         {
             var errorMessage = FeaturesResources.Could_not_extract_interface_colon_The_type_does_not_contain_any_member_that_can_be_extracted_to_an_interface;
             return new ExtractInterfaceTypeAnalysisResult(errorMessage);
         }
 
-        return new ExtractInterfaceTypeAnalysisResult(document, typeNode, typeToExtractFrom, extractableMembers);
+        var formattingOptions = await document.GetSyntaxFormattingOptionsAsync(cancellationToken).ConfigureAwait(false);
+        return new ExtractInterfaceTypeAnalysisResult(document, typeNode, typeToExtractFrom, extractableMembers, formattingOptions);
     }
 
-    public async Task<ExtractInterfaceResult> ExtractInterfaceFromAnalyzedTypeAsync(ExtractInterfaceTypeAnalysisResult refactoringResult, CancellationToken cancellationToken)
+    public async Task<ExtractInterfaceResult> ExtractInterfaceFromAnalyzedTypeAsync(
+        ExtractInterfaceTypeAnalysisResult refactoringResult,
+        CancellationToken cancellationToken)
     {
         var containingNamespaceDisplay = refactoringResult.TypeToExtractFrom.ContainingNamespace.IsGlobalNamespace
             ? string.Empty
             : refactoringResult.TypeToExtractFrom.ContainingNamespace.ToDisplayString();
 
-        var extractInterfaceOptions = await GetExtractInterfaceOptionsAsync(
+        var extractInterfaceOptions = GetExtractInterfaceOptions(
             refactoringResult.DocumentToExtractFrom,
             refactoringResult.TypeToExtractFrom,
             refactoringResult.ExtractableMembers,
             containingNamespaceDisplay,
-            cancellationToken).ConfigureAwait(false);
+            refactoringResult.FormattingOptions,
+            cancellationToken);
 
         if (extractInterfaceOptions.IsCancelled)
         {
@@ -138,7 +140,7 @@ internal abstract class AbstractExtractInterfaceService : ILanguageService
         var extractedInterfaceSymbol = CodeGenerationSymbolFactory.CreateNamedTypeSymbol(
             attributes: default,
             accessibility: ShouldIncludeAccessibilityModifier(refactoringResult.TypeNode) ? refactoringResult.TypeToExtractFrom.DeclaredAccessibility : Accessibility.NotApplicable,
-            modifiers: new DeclarationModifiers(),
+            modifiers: DeclarationModifiers.None,
             typeKind: TypeKind.Interface,
             name: extractInterfaceOptions.InterfaceName,
             typeParameters: ExtractTypeHelpers.GetRequiredTypeParametersForMembers(refactoringResult.TypeToExtractFrom, extractInterfaceOptions.IncludedMembers),
@@ -191,7 +193,7 @@ internal abstract class AbstractExtractInterfaceService : ILanguageService
 
         var completedUnformattedSolution = await GetSolutionWithOriginalTypeUpdatedAsync(
             unformattedInterfaceDocument.Project.Solution,
-            symbolMapping.DocumentIdsToSymbolMap.Keys.ToImmutableArray(),
+            [.. symbolMapping.DocumentIdsToSymbolMap.Keys],
             symbolMapping.TypeNodeAnnotation,
             refactoringResult.TypeToExtractFrom,
             extractedInterfaceSymbol,
@@ -233,7 +235,7 @@ internal abstract class AbstractExtractInterfaceService : ILanguageService
 
         // After the interface is inserted, update the original type to show it implements the new interface
         var unformattedSolutionWithUpdatedType = await GetSolutionWithOriginalTypeUpdatedAsync(
-            unformattedSolution, symbolMapping.DocumentIdsToSymbolMap.Keys.ToImmutableArray(),
+            unformattedSolution, [.. symbolMapping.DocumentIdsToSymbolMap.Keys],
             symbolMapping.TypeNodeAnnotation,
             refactoringResult.TypeToExtractFrom, extractedInterfaceSymbol,
             extractInterfaceOptions.IncludedMembers, symbolMapping.SymbolToDeclarationAnnotationMap, cancellationToken).ConfigureAwait(false);
@@ -249,32 +251,27 @@ internal abstract class AbstractExtractInterfaceService : ILanguageService
             navigationDocumentId: refactoringResult.DocumentToExtractFrom.Id);
     }
 
-    internal static async Task<ExtractInterfaceOptionsResult> GetExtractInterfaceOptionsAsync(
+    internal static ExtractInterfaceOptionsResult GetExtractInterfaceOptions(
         Document document,
         INamedTypeSymbol type,
-        IEnumerable<ISymbol> extractableMembers,
+        ImmutableArray<ISymbol> extractableMembers,
         string containingNamespace,
+        SyntaxFormattingOptions formattingOptions,
         CancellationToken cancellationToken)
     {
-        var conflictingTypeNames = type.ContainingNamespace.GetAllTypes(cancellationToken).Select(t => t.Name);
+        var conflictingTypeNames = type.ContainingNamespace.GetAllTypes(cancellationToken).SelectAsArray(t => t.Name);
         var candidateInterfaceName = type.TypeKind == TypeKind.Interface ? type.Name : "I" + type.Name;
         var defaultInterfaceName = NameGenerator.GenerateUniqueName(candidateInterfaceName, name => !conflictingTypeNames.Contains(name));
-        var syntaxFactsService = document.GetLanguageService<ISyntaxFactsService>();
-        var notificationService = document.Project.Solution.Services.GetService<INotificationService>();
-        var formattingOptions = await document.GetSyntaxFormattingOptionsAsync(cancellationToken).ConfigureAwait(false);
         var generatedNameTypeParameterSuffix = ExtractTypeHelpers.GetTypeParameterSuffix(document, formattingOptions, type, extractableMembers, cancellationToken);
 
         var service = document.Project.Solution.Services.GetRequiredService<IExtractInterfaceOptionsService>();
-        return await service.GetExtractInterfaceOptionsAsync(
-            syntaxFactsService,
-            notificationService,
-            extractableMembers.ToList(),
+        return service.GetExtractInterfaceOptions(
+            document,
+            extractableMembers,
             defaultInterfaceName,
-            conflictingTypeNames.ToList(),
+            conflictingTypeNames,
             containingNamespace,
-            generatedNameTypeParameterSuffix,
-            document.Project.Language,
-            cancellationToken).ConfigureAwait(false);
+            generatedNameTypeParameterSuffix);
     }
 
     private static async Task<Solution> GetFormattedSolutionAsync(Solution unformattedSolution, IEnumerable<DocumentId> documentIds, CancellationToken cancellationToken)

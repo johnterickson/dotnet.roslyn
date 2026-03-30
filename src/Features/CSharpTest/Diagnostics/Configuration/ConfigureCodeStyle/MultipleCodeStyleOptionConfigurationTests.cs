@@ -27,7 +27,7 @@ public abstract partial class MultipleCodeStyleOptionConfigurationTests : Abstra
     {
         Assert.Single(actions);
         var nestedActionForOptionIndex = ((AbstractConfigurationActionWithNestedActions)actions[0]).NestedActions[OptionIndex];
-        return base.MassageActions(ImmutableArray.Create(nestedActionForOptionIndex));
+        return base.MassageActions([nestedActionForOptionIndex]);
     }
 
     protected internal override string GetLanguage() => LanguageNames.CSharp;
@@ -46,7 +46,7 @@ public abstract partial class MultipleCodeStyleOptionConfigurationTests : Abstra
     }
 
     [Trait(Traits.Feature, Traits.Features.CodeActionsConfiguration)]
-    public class VarElsewhere_TrueConfigurationTests : MultipleCodeStyleOptionConfigurationTests
+    public sealed class VarElsewhere_TrueConfigurationTests : MultipleCodeStyleOptionConfigurationTests
     {
         protected override int OptionIndex => 0;
 
@@ -342,7 +342,7 @@ public abstract partial class MultipleCodeStyleOptionConfigurationTests : Abstra
     }
 
     [Trait(Traits.Feature, Traits.Features.CodeActionsConfiguration)]
-    public class VarForBuiltInTypes_FalseConfigurationTests : MultipleCodeStyleOptionConfigurationTests
+    public sealed class VarForBuiltInTypes_FalseConfigurationTests : MultipleCodeStyleOptionConfigurationTests
     {
         protected override int OptionIndex => 1;
 

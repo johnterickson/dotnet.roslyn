@@ -103,7 +103,9 @@ public sealed class RemoveUnnecessaryLambdaExpressionTests
     [Fact]
     public async Task TestWithOptionOff()
     {
-        var code = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             using System;
 
             class C
@@ -116,10 +118,7 @@ public sealed class RemoveUnnecessaryLambdaExpressionTests
                 void Bar(Func<int, string> f) { }
                 string Quux(int i) => default;
             }
-            """;
-        await new VerifyCS.Test
-        {
-            TestCode = code,
+            """,
             LanguageVersion = LanguageVersion.CSharp12,
             Options = { { CSharpCodeStyleOptions.PreferMethodGroupConversion, new CodeStyleOption2<bool>(false, NotificationOption2.None) } }
         }.RunAsync();
@@ -2072,6 +2071,119 @@ public sealed class RemoveUnnecessaryLambdaExpressionTests
                 void M2(Action a)
                 {
                 }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66950")]
+    public async Task TestMissingWithMutableStructs()
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                void M1()
+                {
+                    S s = new S();
+                    M2(() => s.M());
+                }
+
+                static void M2(Action a) { }
+            }
+
+            struct S
+            {
+                public void M() { }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66950")]
+    public async Task TestWithNonReadonlyStructAndReadonlyMethod()
+    {
+        await TestInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                void M1()
+                {
+                    S s = new S();
+                    M2([|() => |]s.M());
+                }
+
+                static void M2(Action a) { }
+            }
+
+            struct S
+            {
+                public readonly void M() { }
+            }
+            """,
+            """
+            using System;
+
+            class C
+            {
+                void M1()
+                {
+                    S s = new S();
+                    M2(s.M);
+                }
+
+                static void M2(Action a) { }
+            }
+
+            struct S
+            {
+                public readonly void M() { }
+            }
+            """);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66950")]
+    public async Task TestWithReadonlyStruct()
+    {
+        await TestInRegularAndScriptAsync(
+            """
+            using System;
+
+            class C
+            {
+                void M1()
+                {
+                    S s = new S();
+                    M2([|() => |]s.M());
+                }
+
+                static void M2(Action a) { }
+            }
+
+            readonly struct S
+            {
+                public void M() { }
+            }
+            """,
+            """
+            using System;
+
+            class C
+            {
+                void M1()
+                {
+                    S s = new S();
+                    M2(s.M);
+                }
+
+                static void M2(Action a) { }
+            }
+
+            readonly struct S
+            {
+                public void M() { }
             }
             """);
     }

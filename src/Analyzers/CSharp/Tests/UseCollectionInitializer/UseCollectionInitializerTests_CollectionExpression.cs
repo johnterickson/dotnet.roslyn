@@ -19,7 +19,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     CSharpUseCollectionInitializerCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseCollectionInitializer)]
-public partial class UseCollectionInitializerTests_CollectionExpression
+public sealed partial class UseCollectionInitializerTests_CollectionExpression
 {
     private static async Task TestInRegularAndScriptAsync([StringSyntax("C#-test")] string testCode, [StringSyntax("C#-test")] string fixedCode, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary)
     {
@@ -5939,6 +5939,140 @@ public partial class UseCollectionInitializerTests_CollectionExpression
                 """,
             LanguageVersion = LanguageVersion.CSharp13,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/76683")]
+    public async Task TestNotOnStack()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System.Linq;
+                using System.Collections.Generic;
+                using System.Collections.Immutable;
+                
+                class C
+                {
+                    Stack<T> GetNumbers<T>(T[] values)
+                    {
+                        return new Stack<T>(values);
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp12,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77962")]
+    public async Task TestNotOnBindingList()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System.ComponentModel;
+                
+                class C
+                {
+                    BindingList<T> GetNumbers<T>(T[] values)
+                    {
+                        return new BindingList<T>(values);
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp12,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/79156")]
+    public async Task TestNotWithConstructorArgNotValidAsAddArgument()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                using System.Collections;
+
+                Goo _ = new("goobar");
+
+                public class Goo(string s = "") : IEnumerable
+                {
+                    public void Add(Bar b) { }
+
+                    IEnumerator IEnumerable.GetEnumerator()
+                        => throw new NotImplementedException();
+                }
+
+                public class Bar { }
+                """,
+            LanguageVersion = LanguageVersion.CSharp12,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            TestState = { OutputKind = OutputKind.ConsoleApplication },
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/79156")]
+    public async Task TestWithConstructorArgValidAsAddArgument()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                using System.Collections;
+                using System.Collections.Generic;
+
+                IEnumerable<Bar> bars = null;
+                Goo _ = [|new|](bars);
+
+                public class Goo : IEnumerable
+                {
+                    public Goo() { }
+
+                    public Goo(IEnumerable<Bar> bars)
+                    {
+                        foreach (var bar in bars)
+                            Add(bar);
+                    }
+
+                    public void Add(Bar b) { }
+
+                    IEnumerator IEnumerable.GetEnumerator()
+                        => throw new NotImplementedException();
+                }
+
+                public class Bar { }
+                """,
+            FixedCode = """
+                using System;
+                using System.Collections;
+                using System.Collections.Generic;
+
+                IEnumerable<Bar> bars = null;
+                Goo _ = [.. bars];
+
+                public class Goo : IEnumerable
+                {
+                    public Goo() { }
+
+                    public Goo(IEnumerable<Bar> bars)
+                    {
+                        foreach (var bar in bars)
+                            Add(bar);
+                    }
+
+                    public void Add(Bar b) { }
+
+                    IEnumerator IEnumerable.GetEnumerator()
+                        => throw new NotImplementedException();
+                }
+
+                public class Bar { }
+                """,
+            LanguageVersion = LanguageVersion.CSharp12,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            TestState = { OutputKind = OutputKind.ConsoleApplication },
         }.RunAsync();
     }
 }

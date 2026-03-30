@@ -22,7 +22,7 @@ using Xunit;
 namespace Microsoft.CodeAnalysis.Editor.UnitTests.Completion;
 
 [UseExportProvider]
-public class CompletionServiceTests
+public sealed class CompletionServiceTests
 {
     [Fact]
     public async Task TestNuGetCompletionProvider()
@@ -70,7 +70,7 @@ class Test {
         Assert.Equal(expectedChange, actualChange);
     }
 
-    private class MockAnalyzerReference : AnalyzerReference, ICompletionProviderFactory
+    private sealed class MockAnalyzerReference : AnalyzerReference, ICompletionProviderFactory
     {
         private readonly CompletionProvider _completionProvider;
 
@@ -83,13 +83,13 @@ class Test {
         public override object Id => nameof(MockAnalyzerReference);
 
         public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzers(string language)
-            => ImmutableArray<DiagnosticAnalyzer>.Empty;
+            => [];
 
         public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzersForAllLanguages()
-            => ImmutableArray<DiagnosticAnalyzer>.Empty;
+            => [];
 
         public ImmutableArray<CompletionProvider> GetCompletionProviders()
-            => ImmutableArray.Create(_completionProvider);
+            => [_completionProvider];
     }
 
     private sealed class DebugAssertTestCompletionProvider : CompletionProvider

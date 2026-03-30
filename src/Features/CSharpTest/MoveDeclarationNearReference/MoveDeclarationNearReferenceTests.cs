@@ -16,7 +16,7 @@ using Xunit;
 namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.MoveDeclarationNearReference;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsMoveDeclarationNearReference)]
-public class MoveDeclarationNearReferenceTests : AbstractCSharpCodeActionTest_NoEditor
+public sealed class MoveDeclarationNearReferenceTests : AbstractCSharpCodeActionTest_NoEditor
 {
     protected override CodeRefactoringProvider CreateCodeRefactoringProvider(TestWorkspace workspace, TestParameters parameters)
         => new CSharpMoveDeclarationNearReferenceCodeRefactoringProvider();
@@ -653,7 +653,8 @@ public class MoveDeclarationNearReferenceTests : AbstractCSharpCodeActionTest_No
                     });
                 }
             }
-            """);
+            """,
+            title: FeaturesResources.Move_declaration_near_reference_may_change_semantics);
     }
 
     [Fact, WorkItem("http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/545435")]

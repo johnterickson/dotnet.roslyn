@@ -13,7 +13,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.CodeStyle;
-using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.UseCollectionExpression;
 using Microsoft.CodeAnalysis.UseCollectionInitializer;
@@ -21,8 +20,8 @@ using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp.UseCollectionExpression;
 
-using static UseCollectionExpressionHelpers;
 using static SyntaxFactory;
+using static UseCollectionExpressionHelpers;
 using FluentState = UpdateExpressionState<ExpressionSyntax, StatementSyntax>;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -102,7 +101,7 @@ internal sealed partial class CSharpUseCollectionExpressionForFluentDiagnosticAn
             memberAccess.Name.Identifier.GetLocation(),
             option.Notification,
             context.Options,
-            additionalLocations: ImmutableArray.Create(invocation.GetLocation()),
+            additionalLocations: [invocation.GetLocation()],
             properties: analysisResult.Value.ChangesSemantics ? ChangesSemantics : null));
 
         return;

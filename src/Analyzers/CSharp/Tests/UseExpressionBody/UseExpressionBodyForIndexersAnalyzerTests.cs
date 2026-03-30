@@ -18,7 +18,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     UseExpressionBodyCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseExpressionBody)]
-public class UseExpressionBodyForIndexersAnalyzerTests
+public sealed class UseExpressionBodyForIndexersAnalyzerTests
 {
     private static async Task TestWithUseExpressionBody(string code, string fixedCode)
     {
@@ -207,15 +207,17 @@ public class UseExpressionBodyForIndexersAnalyzerTests
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/20363")]
     public async Task TestUseBlockBodyForAccessorEventWhenAccessorWantExpression1()
     {
-        var code = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int Bar() { return 0; }
 
                 {|IDE0026:int this[int i] => Bar();|}
             }
-            """;
-        var fixedCode = """
+            """,
+            FixedCode = """
             class C
             {
                 int Bar() { return 0; }
@@ -225,11 +227,7 @@ public class UseExpressionBodyForIndexersAnalyzerTests
                     get => Bar();
                 }
             }
-            """;
-        await new VerifyCS.Test
-        {
-            TestCode = code,
-            FixedCode = fixedCode,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.PreferExpressionBodiedIndexers, ExpressionBodyPreference.Never },

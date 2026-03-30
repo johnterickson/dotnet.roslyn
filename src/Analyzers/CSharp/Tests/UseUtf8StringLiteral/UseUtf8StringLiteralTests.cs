@@ -2,10 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Shared.Extensions;
 using Microsoft.CodeAnalysis.CSharp.UseUtf8StringLiteral;
 using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
@@ -19,7 +17,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     UseUtf8StringLiteralCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseUtf8StringLiteral)]
-public class UseUtf8StringLiteralTests
+public sealed class UseUtf8StringLiteralTests
 {
     [Fact]
     public async Task TestNotInAttribute()
@@ -840,7 +838,10 @@ public class UseUtf8StringLiteralTests
     public async Task TestDoesNotOfferForControlCharacters()
     {
         // Copied from https://github.com/dotnet/runtime/blob/6a889d234267a4c96ed21d0e1660dce787d78a38/src/libraries/Microsoft.CSharp/src/Microsoft/CSharp/RuntimeBinder/Semantics/Conversion.cs
-        var input = """
+
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 internal enum ConvKind
@@ -880,11 +881,7 @@ public class UseUtf8StringLiteralTests
                      new byte[] /*   U8 */ { EXP, EXP, EXP, EXP, IMP, IMP, IUD, EXP, NO,  EXP,  EXP, EXP, ID  },
                 };
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = input,
+            """,
             CodeActionValidationMode = CodeActionValidationMode.None,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             LanguageVersion = LanguageVersion.CSharp12

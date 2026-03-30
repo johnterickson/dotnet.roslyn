@@ -17,7 +17,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.ConvertNamespace;
 
 using VerifyCS = CSharpCodeFixVerifier<ConvertToBlockScopedNamespaceDiagnosticAnalyzer, ConvertNamespaceCodeFixProvider>;
 
-public class ConvertToBlockScopedNamespaceAnalyzerTests
+public sealed class ConvertToBlockScopedNamespaceAnalyzerTests
 {
     public static IEnumerable<object[]> EndOfDocumentSequences
     {
@@ -75,12 +75,11 @@ public class ConvertToBlockScopedNamespaceAnalyzerTests
     [Fact]
     public async Task TestNoConvertToBlockScopedInCSharp10WithBlockScopedPreference()
     {
-        var code = """
-            namespace N {}
-            """;
         await new VerifyCS.Test
         {
-            TestCode = code,
+            TestCode = """
+            namespace N {}
+            """,
             LanguageVersion = LanguageVersion.CSharp10,
             Options =
             {

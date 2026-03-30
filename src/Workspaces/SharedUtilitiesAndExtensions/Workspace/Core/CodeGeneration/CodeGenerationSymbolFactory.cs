@@ -6,13 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Microsoft.CodeAnalysis.Shared.Extensions;
-
-#if CODE_STYLE
-using Microsoft.CodeAnalysis.Internal.Editing;
-#else
 using Microsoft.CodeAnalysis.Editing;
-#endif
+using Microsoft.CodeAnalysis.Shared.Extensions;
 
 namespace Microsoft.CodeAnalysis.CodeGeneration;
 
@@ -157,7 +152,7 @@ internal static class CodeGenerationSymbolFactory
         ITypeSymbol? returnType,
         RefKind refKind,
         ImmutableArray<IMethodSymbol> explicitInterfaceImplementations,
-        string name,
+        string? name,
         ImmutableArray<ITypeParameterSymbol> typeParameters,
         ImmutableArray<IParameterSymbol> parameters,
         ImmutableArray<SyntaxNode> statements = default,
@@ -179,7 +174,7 @@ internal static class CodeGenerationSymbolFactory
         ITypeSymbol? returnType,
         RefKind refKind,
         ImmutableArray<IMethodSymbol> explicitInterfaceImplementations,
-        string name, ImmutableArray<ITypeParameterSymbol> typeParameters,
+        string? name, ImmutableArray<ITypeParameterSymbol> typeParameters,
         ImmutableArray<IParameterSymbol> parameters,
         ImmutableArray<SyntaxNode> statements = default,
         ImmutableArray<SyntaxNode> handlesExpressions = default,
@@ -287,7 +282,7 @@ internal static class CodeGenerationSymbolFactory
     /// <summary>
     /// Creates a parameter symbol that can be used to describe a parameter declaration.
     /// </summary>
-    internal static IParameterSymbol CreateParameterSymbol(
+    public static IParameterSymbol CreateParameterSymbol(
         IParameterSymbol parameter,
         ImmutableArray<AttributeData>? attributes = null,
         RefKind? refKind = null,
@@ -392,7 +387,7 @@ internal static class CodeGenerationSymbolFactory
         return CreateMethodSymbol(
             attributes,
             accessibility,
-            new DeclarationModifiers(isAbstract: statements == null),
+            DeclarationModifiers.None.WithIsAbstract(statements == null),
             returnType: null,
             refKind: RefKind.None,
             explicitInterfaceImplementations: default,
@@ -454,7 +449,7 @@ internal static class CodeGenerationSymbolFactory
             containingAssembly, null, attributes, accessibility, modifiers, isRecord, typeKind, name,
             typeParameters, baseType, interfaces, specialType, nullableAnnotation,
             members.WhereAsArray(m => m is not INamedTypeSymbol),
-            members.OfType<INamedTypeSymbol>().Select(n => n.ToCodeGenerationSymbol()).ToImmutableArray(),
+            [.. members.OfType<INamedTypeSymbol>().Select(n => n.ToCodeGenerationSymbol())],
             enumUnderlyingType: null);
     }
 
@@ -475,7 +470,7 @@ internal static class CodeGenerationSymbolFactory
         var invokeMethod = CreateMethodSymbol(
             attributes: default,
             accessibility: Accessibility.Public,
-            modifiers: new DeclarationModifiers(),
+            modifiers: DeclarationModifiers.None,
             returnType: returnType,
             refKind: refKind,
             explicitInterfaceImplementations: default,

@@ -5,6 +5,7 @@
 #nullable disable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -44,7 +45,7 @@ public abstract partial class CSharpSuppressionTests : AbstractSuppressionDiagno
         }
 
         [Trait(Traits.Feature, Traits.Features.CodeActionsSuppression)]
-        public class CompilerDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed class CompilerDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
                 => Tuple.Create<DiagnosticAnalyzer, IConfigurationFixProvider>(null, new CSharpSuppressionCodeFixProvider());
@@ -446,18 +447,17 @@ class Class
                 var analyzerReference = new AnalyzerImageReference([new CSharpCompilerDiagnosticAnalyzer()]);
                 workspace.TryApplyChanges(workspace.CurrentSolution.WithAnalyzerReferences([analyzerReference]));
 
-                var diagnosticService = Assert.IsType<DiagnosticAnalyzerService>(workspace.ExportProvider.GetExportedValue<IDiagnosticAnalyzerService>());
-                var incrementalAnalyzer = diagnosticService.CreateIncrementalAnalyzer(workspace);
+                var diagnosticService = workspace.Services.GetRequiredService<IDiagnosticAnalyzerService>();
                 var suppressionProvider = CreateDiagnosticProviderAndFixer(workspace).Item2;
                 var suppressionProviderFactory = new Lazy<IConfigurationFixProvider, CodeChangeProviderMetadata>(() => suppressionProvider,
                     new CodeChangeProviderMetadata("SuppressionProvider", languages: [LanguageNames.CSharp]));
                 var fixService = new CodeFixService(
-                    diagnosticService,
                     loggers: [],
                     fixers: [],
                     [suppressionProviderFactory]);
                 var document = GetDocumentAndSelectSpan(workspace, out var span);
-                var diagnostics = await diagnosticService.GetDiagnosticsForSpanAsync(document, span, CancellationToken.None);
+                var diagnostics = await diagnosticService.GetDiagnosticsForSpanAsync(
+                    document, span, DiagnosticKind.All, CancellationToken.None);
                 Assert.Equal(2, diagnostics.Where(d => d.Id == "CS0219").Count());
 
                 var allFixes = (await fixService.GetFixesAsync(document, span, CancellationToken.None))
@@ -659,7 +659,7 @@ C3 {{ }} // comment
             }
         }
 
-        public class UserHiddenDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed class UserHiddenDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
             {
@@ -685,9 +685,9 @@ int Method()
             }
         }
 
-        public partial class UserInfoDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed partial class UserInfoDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
-            private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+            private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
             {
                 public static readonly DiagnosticDescriptor Decsciptor =
                     new DiagnosticDescriptor("InfoDiagnostic", "InfoDiagnostic Title", "InfoDiagnostic", "InfoDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -696,7 +696,7 @@ int Method()
                 {
                     get
                     {
-                        return ImmutableArray.Create(Decsciptor);
+                        return [Decsciptor];
                     }
                 }
 
@@ -745,7 +745,7 @@ class Class
             }
         }
 
-        public partial class FormattingDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed partial class FormattingDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
             {
@@ -757,7 +757,7 @@ class Class
             {
                 var solution = workspace.CurrentSolution;
                 var compilationOptions = solution.Projects.Single().CompilationOptions;
-                var specificDiagnosticOptions = new[] { KeyValuePairUtil.Create(IDEDiagnosticIds.FormattingDiagnosticId, ReportDiagnostic.Warn) };
+                var specificDiagnosticOptions = new[] { KeyValuePair.Create(IDEDiagnosticIds.FormattingDiagnosticId, ReportDiagnostic.Warn) };
                 compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(specificDiagnosticOptions);
                 var updatedSolution = solution.WithProjectCompilationOptions(solution.ProjectIds.Single(), compilationOptions);
                 await workspace.ChangeSolutionAsync(updatedSolution);
@@ -795,9 +795,9 @@ class Class
             }
         }
 
-        public class UserErrorDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed class UserErrorDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
-            private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+            private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
             {
                 private readonly DiagnosticDescriptor _descriptor =
                     new DiagnosticDescriptor("ErrorDiagnostic", "ErrorDiagnostic", "ErrorDiagnostic", "ErrorDiagnostic", DiagnosticSeverity.Error, isEnabledByDefault: true);
@@ -806,7 +806,7 @@ class Class
                 {
                     get
                     {
-                        return ImmutableArray.Create(_descriptor);
+                        return [_descriptor];
                     }
                 }
 
@@ -855,12 +855,12 @@ class Class
             }
         }
 
-        public class DiagnosticWithBadIdSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+        public sealed class DiagnosticWithBadIdSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
         {
             // Analyzer driver generates a no-location analyzer exception diagnostic, which we don't intend to test here.
             protected override bool IncludeNoLocationDiagnostics => false;
 
-            private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+            private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
             {
                 private readonly DiagnosticDescriptor _descriptor =
                     new DiagnosticDescriptor("@~DiagnosticWithBadId", "DiagnosticWithBadId", "DiagnosticWithBadId", "DiagnosticWithBadId", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -869,7 +869,7 @@ class Class
                 {
                     get
                     {
-                        return ImmutableArray.Create(_descriptor);
+                        return [_descriptor];
                     }
                 }
 
@@ -908,9 +908,9 @@ using System;
         }
     }
 
-    public partial class MultilineDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
+    public sealed partial class MultilineDiagnosticSuppressionTests : CSharpPragmaWarningDisableSuppressionTests
     {
-        private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+        private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
         {
             public static readonly DiagnosticDescriptor Decsciptor =
                 new DiagnosticDescriptor("InfoDiagnostic", "InfoDiagnostic Title", "InfoDiagnostic", "InfoDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -919,7 +919,7 @@ using System;
             {
                 get
                 {
-                    return ImmutableArray.Create(Decsciptor);
+                    return [Decsciptor];
                 }
             }
 
@@ -966,7 +966,7 @@ class Class
     {
         protected sealed override int CodeActionIndex => 1;
 
-        public class CompilerDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
+        public sealed class CompilerDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
                 => Tuple.Create<DiagnosticAnalyzer, IConfigurationFixProvider>(null, new CSharpSuppressionCodeFixProvider());
@@ -987,7 +987,7 @@ class Class
             }
         }
 
-        public class FormattingDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
+        public sealed class FormattingDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
             {
@@ -999,7 +999,7 @@ class Class
             {
                 var solution = workspace.CurrentSolution;
                 var compilationOptions = solution.Projects.Single().CompilationOptions;
-                var specificDiagnosticOptions = new[] { KeyValuePairUtil.Create(IDEDiagnosticIds.FormattingDiagnosticId, ReportDiagnostic.Warn) };
+                var specificDiagnosticOptions = new[] { KeyValuePair.Create(IDEDiagnosticIds.FormattingDiagnosticId, ReportDiagnostic.Warn) };
                 compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(specificDiagnosticOptions);
                 var updatedSolution = solution.WithProjectCompilationOptions(solution.ProjectIds.Single(), compilationOptions);
                 await workspace.ChangeSolutionAsync(updatedSolution);
@@ -1024,7 +1024,7 @@ class Class
             }
         }
 
-        public class UserHiddenDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
+        public sealed class UserHiddenDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
         {
             internal override Tuple<DiagnosticAnalyzer, IConfigurationFixProvider> CreateDiagnosticProviderAndFixer(Workspace workspace)
             {
@@ -1049,9 +1049,9 @@ class Class
         }
 
         [Trait(Traits.Feature, Traits.Features.CodeActionsSuppression)]
-        public partial class UserInfoDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
+        public sealed partial class UserInfoDiagnosticSuppressionTests : CSharpGlobalSuppressMessageSuppressionTests
         {
-            private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+            private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
             {
                 public static readonly DiagnosticDescriptor Descriptor =
                     new("InfoDiagnostic", "InfoDiagnostic", "InfoDiagnostic", "InfoDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -1060,7 +1060,7 @@ class Class
                 {
                     get
                     {
-                        return ImmutableArray.Create(Descriptor);
+                        return [Descriptor];
                     }
                 }
 
@@ -2049,14 +2049,14 @@ using System.Diagnostics.CodeAnalysis;
         protected sealed override int CodeActionIndex => 2;
 
         [Trait(Traits.Feature, Traits.Features.CodeActionsSuppression)]
-        public class UserInfoDiagnosticSuppressionTests : CSharpLocalSuppressMessageSuppressionTests
+        public sealed class UserInfoDiagnosticSuppressionTests : CSharpLocalSuppressMessageSuppressionTests
         {
-            private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+            private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
             {
                 private readonly DiagnosticDescriptor _descriptor =
                     new("InfoDiagnostic", "InfoDiagnostic", "InfoDiagnostic", "InfoDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-                public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(_descriptor);
+                public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [_descriptor];
 
                 public override void Initialize(AnalysisContext context)
                     => context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ClassDeclaration, SyntaxKind.NamespaceDeclaration, SyntaxKind.MethodDeclaration);
@@ -2444,15 +2444,15 @@ namespace ClassLibrary10
 
     #region NoLocation Diagnostics tests
 
-    public partial class CSharpDiagnosticWithoutLocationSuppressionTests : CSharpSuppressionTests
+    public sealed partial class CSharpDiagnosticWithoutLocationSuppressionTests : CSharpSuppressionTests
     {
-        private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+        private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
         {
             public static readonly DiagnosticDescriptor Descriptor =
                 new("NoLocationDiagnostic", "NoLocationDiagnostic", "NoLocationDiagnostic", "NoLocationDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
             public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-                => ImmutableArray.Create(Descriptor);
+                => [Descriptor];
 
             public override void Initialize(AnalysisContext context)
                 => context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ClassDeclaration);

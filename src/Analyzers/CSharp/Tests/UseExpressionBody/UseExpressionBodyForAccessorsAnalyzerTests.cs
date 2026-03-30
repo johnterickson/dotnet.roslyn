@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeStyle;
 using Microsoft.CodeAnalysis.CSharp;
@@ -20,11 +21,11 @@ using VerifyCS = CSharpCodeFixVerifier<
     UseExpressionBodyCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseExpressionBody)]
-public class UseExpressionBodyForAccessorsTests
+public sealed class UseExpressionBodyForAccessorsTests
 {
     private static async Task TestWithUseExpressionBody(
-        string code,
-        string fixedCode,
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string code,
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string fixedCode,
         LanguageVersion version = LanguageVersion.CSharp8)
     {
         var test = new VerifyCS.Test
@@ -44,7 +45,10 @@ public class UseExpressionBodyForAccessorsTests
         await test.RunAsync();
     }
 
-    private static async Task TestWithUseExpressionBodyIncludingPropertiesAndIndexers(string code, string fixedCode, LanguageVersion version = LanguageVersion.CSharp8)
+    private static async Task TestWithUseExpressionBodyIncludingPropertiesAndIndexers(
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string code,
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string fixedCode,
+        LanguageVersion version = LanguageVersion.CSharp8)
     {
         await new VerifyCS.Test
         {
@@ -61,7 +65,10 @@ public class UseExpressionBodyForAccessorsTests
         }.RunAsync();
     }
 
-    private static async Task TestWithUseBlockBodyIncludingPropertiesAndIndexers(string code, string fixedCode, LanguageVersion version = LanguageVersion.CSharp8)
+    private static async Task TestWithUseBlockBodyIncludingPropertiesAndIndexers(
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string code,
+        [StringSyntax(PredefinedEmbeddedLanguageNames.CSharpTest)] string fixedCode,
+        LanguageVersion version = LanguageVersion.CSharp8)
     {
         await new VerifyCS.Test
         {
@@ -281,8 +288,10 @@ public class UseExpressionBodyForAccessorsTests
     [Fact]
     public async Task TestMissingWithOnlyInit()
     {
-        var code =
-            """
+        await new VerifyCS.Test
+        {
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
+            TestCode = """
             class C
             {
                 int Goo
@@ -292,12 +301,7 @@ public class UseExpressionBodyForAccessorsTests
 
                 int Bar() { return 0; }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
-            TestCode = code,
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
         }.RunAsync();
     }
@@ -563,7 +567,9 @@ public class UseExpressionBodyForAccessorsTests
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/31308")]
     public async Task TestUseBlockBody5()
     {
-        var code = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 C this[int index]
@@ -571,10 +577,7 @@ public class UseExpressionBodyForAccessorsTests
                     get => default;
                 }
             }
-            """;
-        await new VerifyCS.Test
-        {
-            TestCode = code,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.PreferExpressionBodiedAccessors, ExpressionBodyPreference.WhenOnSingleLine, NotificationOption2.None },
@@ -649,33 +652,12 @@ public class UseExpressionBodyForAccessorsTests
         await TestWithUseBlockBodyIncludingPropertiesAndIndexers(code, fixedCode);
     }
 
-    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
-    public async Task TestAccessorListFormatting_FixAll()
+    [Fact]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/61279")]
+    public async Task TestAccessorListFormatting_FixAll1()
     {
-        var code = """
-            class C
-            {
-                int Bar() { return 0; }
-
-                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:set => Bar();|} }
-            }
-            """;
         var fixedCode = """
-            class C
-            {
-                int Bar() { return 0; }
-
-                int Goo
-                {
-                    get { return Bar(); }
-                    set
-                    {
-                        Bar();
-                    }
-                }
-            }
-            """;
-        var batchFixedCode = """
             class C
             {
                 int Bar() { return 0; }
@@ -696,9 +678,16 @@ public class UseExpressionBodyForAccessorsTests
             """;
         await new VerifyCS.Test
         {
-            TestCode = code,
+            TestCode = """
+            class C
+            {
+                int Bar() { return 0; }
+
+                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:set => Bar();|} }
+            }
+            """,
             FixedCode = fixedCode,
-            BatchFixedCode = batchFixedCode,
+            BatchFixedCode = fixedCode,
             Options =
             {
                 { CSharpCodeStyleOptions.PreferExpressionBodiedAccessors, ExpressionBodyPreference.Never  },
@@ -708,35 +697,148 @@ public class UseExpressionBodyForAccessorsTests
         }.RunAsync();
     }
 
-    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
+    [Fact]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/61279")]
     public async Task TestAccessorListFormatting_FixAll2()
     {
-        var code =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
-                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:init => Bar();|} }
-
                 int Bar() { return 0; }
+
+                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:set => Bar();|} }
             }
-            """;
-        var fixedCode =
-            """
+            """,
+            FixedCode = """
             class C
             {
+                int Bar() { return 0; }
+
                 int Goo
                 {
-                    get { return Bar(); }
-                    init
+                    get
+                    {
+                        return Bar();
+                    }
+                    set => Bar();
+                }
+            }
+            """,
+            BatchFixedCode = """
+            class C
+            {
+                int Bar() { return 0; }
+
+                int Goo
+                {
+                    get
+                    {
+                        return Bar();
+                    }
+
+                    set
                     {
                         Bar();
                     }
                 }
-
-                int Bar() { return 0; }
             }
-            """;
-        var batchFixedCode =
+            """,
+            DiagnosticSelector = diagnostics => diagnostics[0],
+            CodeFixTestBehaviors = CodeFixTestBehaviors.FixOne,
+            Options =
+            {
+                { CSharpCodeStyleOptions.PreferExpressionBodiedAccessors, ExpressionBodyPreference.Never  },
+                { CSharpCodeStyleOptions.PreferExpressionBodiedProperties, ExpressionBodyPreference.Never },
+                { CSharpCodeStyleOptions.PreferExpressionBodiedIndexers, ExpressionBodyPreference.Never },
+            },
+            FixedState =
+            {
+                ExpectedDiagnostics =
+                {
+                    // /0/Test0.cs(7,9): hidden IDE0027: Use block body for accessor
+                    VerifyCS.Diagnostic("IDE0027").WithMessage(CSharpAnalyzersResources.Use_block_body_for_accessor).WithSpan(11, 9, 11, 22).WithOptions(DiagnosticOptions.IgnoreAdditionalLocations),
+                }
+            },
+        }.RunAsync();
+    }
+
+    [Fact]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/61279")]
+    public async Task TestAccessorListFormatting_FixAll3()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+            class C
+            {
+                int Bar() { return 0; }
+
+                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:set => Bar();|} }
+            }
+            """,
+            FixedCode = """
+            class C
+            {
+                int Bar() { return 0; }
+
+                int Goo
+                {
+                    get => Bar();
+                    set
+                    {
+                        Bar();
+                    }
+                }
+            }
+            """,
+            BatchFixedCode = """
+            class C
+            {
+                int Bar() { return 0; }
+
+                int Goo
+                {
+                    get
+                    {
+                        return Bar();
+                    }
+
+                    set
+                    {
+                        Bar();
+                    }
+                }
+            }
+            """,
+            DiagnosticSelector = diagnostics => diagnostics[1],
+            CodeFixTestBehaviors = CodeFixTestBehaviors.FixOne,
+            Options =
+            {
+                { CSharpCodeStyleOptions.PreferExpressionBodiedAccessors, ExpressionBodyPreference.Never  },
+                { CSharpCodeStyleOptions.PreferExpressionBodiedProperties, ExpressionBodyPreference.Never },
+                { CSharpCodeStyleOptions.PreferExpressionBodiedIndexers, ExpressionBodyPreference.Never },
+            },
+            FixedState =
+            {
+                ExpectedDiagnostics =
+                {
+                    // /0/Test0.cs(7,9): hidden IDE0027: Use block body for accessor
+                    VerifyCS.Diagnostic("IDE0027").WithMessage(CSharpAnalyzersResources.Use_block_body_for_accessor).WithSpan(7, 9, 7, 22).WithOptions(DiagnosticOptions.IgnoreAdditionalLocations),
+                }
+            },
+        }.RunAsync();
+    }
+
+    [Fact]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/20350")]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/61279")]
+    public async Task TestAccessorListFormatting_FixAll4()
+    {
+        var fixedCode =
             """
             class C
             {
@@ -760,9 +862,16 @@ public class UseExpressionBodyForAccessorsTests
         await new VerifyCS.Test
         {
             ReferenceAssemblies = ReferenceAssemblies.Net.Net50,
-            TestCode = code,
+            TestCode = """
+            class C
+            {
+                int Goo { {|IDE0027:get => Bar();|} {|IDE0027:init => Bar();|} }
+
+                int Bar() { return 0; }
+            }
+            """,
             FixedCode = fixedCode,
-            BatchFixedCode = batchFixedCode,
+            BatchFixedCode = fixedCode,
             LanguageVersion = LanguageVersion.CSharp9,
             Options =
             {

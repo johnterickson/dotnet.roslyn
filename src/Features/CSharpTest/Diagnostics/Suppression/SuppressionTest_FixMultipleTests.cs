@@ -33,14 +33,14 @@ public partial class CSharpSuppressionTests : AbstractSuppressionDiagnosticTest_
                 new UserDiagnosticAnalyzer(), new CSharpSuppressionCodeFixProvider());
         }
 
-        private class UserDiagnosticAnalyzer : DiagnosticAnalyzer
+        private sealed class UserDiagnosticAnalyzer : DiagnosticAnalyzer
         {
             public static readonly DiagnosticDescriptor Decsciptor1 =
                 new DiagnosticDescriptor("InfoDiagnostic", "InfoDiagnostic Title", "InfoDiagnostic", "InfoDiagnostic", DiagnosticSeverity.Info, isEnabledByDefault: true);
             public static readonly DiagnosticDescriptor Decsciptor2 =
                 new DiagnosticDescriptor("InfoDiagnostic2", "InfoDiagnostic2 Title", "InfoDiagnostic2", "InfoDiagnostic2", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-            public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Decsciptor1, Decsciptor2);
+            public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Decsciptor1, Decsciptor2];
 
             public override void Initialize(AnalysisContext context)
                 => context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ClassDeclaration);
@@ -56,7 +56,7 @@ public partial class CSharpSuppressionTests : AbstractSuppressionDiagnosticTest_
 
         #region "Pragma disable tests"
 
-        public class CSharpFixMultiplePragmaWarningSuppressionTests : CSharpFixMultipleSuppressionTests
+        public sealed class CSharpFixMultiplePragmaWarningSuppressionTests : CSharpFixMultipleSuppressionTests
         {
             [Fact]
             [Trait(Traits.Feature, Traits.Features.CodeActionsSuppression)]

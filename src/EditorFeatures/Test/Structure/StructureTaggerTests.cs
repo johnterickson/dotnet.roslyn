@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.Editor.Implementation.Structure;
-using Microsoft.CodeAnalysis.Editor.Shared.Options;
 using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
 using Microsoft.CodeAnalysis.Editor.Tagging;
 using Microsoft.CodeAnalysis.Structure;
@@ -23,7 +22,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Structure;
 
 [UseExportProvider]
 [Trait(Traits.Feature, Traits.Features.Outlining)]
-public class StructureTaggerTests
+public sealed class StructureTaggerTests
 {
     [WpfTheory]
     [CombinatorialData]
@@ -53,7 +52,7 @@ namespace MyNamespace
 #endregion
 }";
 
-        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeatures);
         var globalOptions = workspace.GlobalOptions;
 
         globalOptions.SetGlobalOption(BlockStructureOptionsStorage.CollapseRegionsWhenCollapsingToDefinitions, LanguageNames.CSharp, collapseRegionsWhenCollapsingToDefinitions);
@@ -120,7 +119,7 @@ public class Bar
 }
 ";
 
-        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeatures);
         var globalOptions = workspace.GlobalOptions;
 
         globalOptions.SetGlobalOption(BlockStructureOptionsStorage.CollapseRegionsWhenCollapsingToDefinitions, LanguageNames.CSharp, collapseRegionsWhenCollapsingToDefinitions);
@@ -165,7 +164,7 @@ public class Bar
 }
 ";
 
-        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeatures);
         var globalOptions = workspace.GlobalOptions;
 
         globalOptions.SetGlobalOption(BlockStructureOptionsStorage.CollapseRegionsWhenCollapsingToDefinitions, LanguageNames.CSharp, collapseRegionsWhenCollapsingToDefinitions);
@@ -210,7 +209,7 @@ namespace Foo
 }
 ";
 
-        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeatures);
         var globalOptions = workspace.GlobalOptions;
 
         globalOptions.SetGlobalOption(BlockStructureOptionsStorage.CollapseRegionsWhenCollapsingToDefinitions, LanguageNames.CSharp, collapseRegionsWhenCollapsingToDefinitions);
@@ -262,7 +261,7 @@ Namespace MyNamespace
 #End Region
 End Namespace";
 
-        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeatures);
         var globalOptions = workspace.GlobalOptions;
 
         globalOptions.SetGlobalOption(BlockStructureOptionsStorage.CollapseRegionsWhenCollapsingToDefinitions, LanguageNames.VisualBasic, collapseRegionsWhenCollapsingToDefinitions);
@@ -318,7 +317,7 @@ End Namespace";
     End Sub
 End Module";
 
-        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeatures);
         var tags = await GetTagsFromWorkspaceAsync(workspace);
 
         var hints = tags.Select(x => x.GetCollapsedHintForm()).Cast<ViewHostingControl>().ToArray();
@@ -340,7 +339,7 @@ Module Program
     End Sub
 End Module";
 
-        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateVisualBasic(code, composition: EditorTestCompositions.EditorFeatures);
         var tags = await GetTagsFromWorkspaceAsync(workspace);
         Assert.Collection(tags, programTag =>
         {
@@ -372,7 +371,7 @@ End Module";
             }
             """;
 
-        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeaturesWpf);
+        using var workspace = EditorTestWorkspace.CreateCSharp(code, composition: EditorTestCompositions.EditorFeatures);
         var tags = await GetTagsFromWorkspaceAsync(workspace);
 
         Assert.Collection(tags, programTag =>

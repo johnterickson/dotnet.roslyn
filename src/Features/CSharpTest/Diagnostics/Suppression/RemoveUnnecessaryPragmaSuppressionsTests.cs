@@ -58,7 +58,7 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests : AbstractUnncess
         public static readonly DiagnosticDescriptor Descriptor0219 =
             new DiagnosticDescriptor("Analyzer0219", "Variable is assigned but its value is never used", "Message", "Category", DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Descriptor0168, Descriptor0219);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor0168, Descriptor0219];
 
         public override void Initialize(AnalysisContext context)
         {
@@ -113,7 +113,7 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests : AbstractUnncess
         public static readonly DiagnosticDescriptor Descriptor =
             new DiagnosticDescriptor("CompilationEndId", "Title", "Message", "Category", DiagnosticSeverity.Warning, isEnabledByDefault: true,
                 customTags: [WellKnownDiagnosticTags.CompilationEnd]);
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Descriptor);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor];
         public override void Initialize(AnalysisContext context)
             => context.RegisterCompilationStartAction(context => context.RegisterCompilationEndAction(_ => { }));
     }
@@ -142,7 +142,7 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests : AbstractUnncess
             }
 
             internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
-                => ImmutableArray.Create<DiagnosticAnalyzer>(new CSharpCompilerDiagnosticAnalyzer());
+                => [new CSharpCompilerDiagnosticAnalyzer()];
 
             protected override bool IsCompilerDiagnosticsTest => true;
             protected override string VariableDeclaredButNotUsedDiagnosticId => "CS0168";
@@ -181,16 +181,17 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests : AbstractUnncess
             }
 
             internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
-                => ImmutableArray.Create<DiagnosticAnalyzer>(new UserDiagnosticAnalyzer(), new CompilationEndDiagnosticAnalyzer());
+                => [new UserDiagnosticAnalyzer(), new CompilationEndDiagnosticAnalyzer()];
             protected override bool IsCompilerDiagnosticsTest => false;
             protected override string VariableDeclaredButNotUsedDiagnosticId => UserDiagnosticAnalyzer.Descriptor0168.Id;
             protected override string VariableAssignedButNotUsedDiagnosticId => UserDiagnosticAnalyzer.Descriptor0219.Id;
             protected override ImmutableArray<string> UnsupportedDiagnosticIds
-                => ImmutableArray.Create(
+                => [
                     CompilationEndDiagnosticAnalyzer.Descriptor.Id,
                     IDEDiagnosticIds.RemoveUnnecessarySuppressionDiagnosticId,
                     IDEDiagnosticIds.FormattingDiagnosticId,
-                    "format");
+                    "format",
+                ];
         }
 
         [Fact]
@@ -458,6 +459,156 @@ class Class
     }}
 }}
 |]", new TestParameters(options: options));
+        }
+
+        [Theory]
+        [InlineData("event", "EventHandler")]
+        [InlineData("static", "int")]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/78786")]
+        public async Task TestRemoveDiagnosticSuppression_Attribute_MultiVariableDeclaration(string keyword, string type)
+        {
+            await TestInRegularAndScript1Async(
+                $$"""
+                public class C
+                {
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "<Pending>")]|]
+                    public {{keyword}} {{type}} A, B;
+                }
+                """,
+                $$"""
+                public class C
+                {
+                    public {{keyword}} {{type}} A, B;
+                }
+                """);
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/78786")]
+        public async Task TestRemoveDiagnosticSuppression_Attribute_PartialMethodDefinition()
+        {
+            await TestInRegularAndScript1Async(
+                """
+                public partial class C
+                {
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "<Pending>")]|]
+                    partial void M();
+                }
+
+                public partial class C
+                {
+                    partial void M()
+                    {
+                    }
+                }
+                """,
+                """
+                public partial class C
+                {
+                    partial void M();
+                }
+                
+                public partial class C
+                {
+                    partial void M()
+                    {
+                    }
+                }
+                """);
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/78786")]
+        public async Task TestRemoveDiagnosticSuppression_Attribute_PartialMethodImplementation()
+        {
+            await TestInRegularAndScript1Async(
+                """
+                public partial class C
+                {
+                    partial void M();
+                }
+
+                public partial class C
+                {
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "<Pending>")]|]
+                    partial void M()
+                    {
+                    }
+                }
+                """,
+                """
+                public partial class C
+                {
+                    partial void M();
+                }
+                
+                public partial class C
+                {
+                    partial void M()
+                    {
+                    }
+                }
+                """);
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/78786")]
+        public async Task TestRemoveDiagnosticSuppression_Attribute_PartialPropertyDefinition()
+        {
+            await TestInRegularAndScript1Async(
+                """
+                public partial class C
+                {
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "<Pending>")]|]
+                    partial int P { get; }
+                }
+                
+                public partial class C
+                {
+                    partial int P => 5230;
+                }
+                """,
+                """
+                public partial class C
+                {
+                    partial int P { get; }
+                }
+                
+                public partial class C
+                {
+                    partial int P => 5230;
+                }
+                """);
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/78786")]
+        public async Task TestRemoveDiagnosticSuppression_Attribute_PartialPropertyImplementation()
+        {
+            await TestInRegularAndScript1Async(
+                """
+                public partial class C
+                {
+                    partial int P { get; }
+                }
+
+                public partial class C
+                {
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "<Pending>")]|]
+                    partial int P => 5230;
+                }
+                """,
+                """
+                public partial class C
+                {
+                    partial int P { get; }
+                }
+                
+                public partial class C
+                {
+                    partial int P => 5230;
+                }
+                """);
         }
 
         [Fact]
@@ -1016,7 +1167,7 @@ class Class
         }
 
         internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
-            => ImmutableArray.Create<DiagnosticAnalyzer>(new CSharpCompilerDiagnosticAnalyzer(), new UserDiagnosticAnalyzer());
+            => [new CSharpCompilerDiagnosticAnalyzer(), new UserDiagnosticAnalyzer()];
 
         [Fact]
         public async Task TestDoNotRemoveInvalidDiagnosticSuppression()
@@ -1297,7 +1448,7 @@ class Class
             public static readonly DiagnosticDescriptor Descriptor =
                 new(DiagnosticId, "NonLocalDiagnosticTitle", "NonLocalDiagnosticMessage", "NonLocalDiagnosticCategory", DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-            public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Descriptor);
+            public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor];
 
             public override void Initialize(AnalysisContext context)
             {
@@ -1313,7 +1464,7 @@ class Class
         }
 
         internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
-            => ImmutableArray.Create<DiagnosticAnalyzer>(new NonLocalDiagnosticsAnalyzer());
+            => [new NonLocalDiagnosticsAnalyzer()];
 
         [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/50203")]
         public async Task TestDoNotRemoveInvalidDiagnosticSuppression()
@@ -1339,7 +1490,7 @@ namespace N
         }
 
         internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
-            => ImmutableArray.Create<DiagnosticAnalyzer>(new CSharpUseAutoPropertyAnalyzer());
+            => [new CSharpUseAutoPropertyAnalyzer()];
 
         [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/55529")]
         public async Task TestDoNotRemoveAutoPropertySuppression()

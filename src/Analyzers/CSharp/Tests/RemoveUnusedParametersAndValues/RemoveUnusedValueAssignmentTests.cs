@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.CodeAnalysis.Testing;
 using Roslyn.Test.Utilities;
-using Roslyn.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 using static Roslyn.Test.Utilities.TestHelpers;
@@ -23,13 +22,9 @@ using VerifyCS = CSharpCodeFixVerifier<
     CSharpRemoveUnusedValuesCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsRemoveUnusedValues)]
-public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
+public sealed class RemoveUnusedValueAssignmentTests(ITestOutputHelper logger)
+    : RemoveUnusedValuesTestsBase(logger)
 {
-    public RemoveUnusedValueAssignmentTests(ITestOutputHelper logger)
-      : base(logger)
-    {
-    }
-
     private protected override OptionsCollection PreferNone
         => Option(CSharpCodeStyleOptions.UnusedValueAssignment,
                new CodeStyleOption2<UnusedValuePreference>(UnusedValuePreference.DiscardVariable, NotificationOption2.None));
@@ -49,8 +44,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Initialization_Suppressed()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -60,11 +56,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable, NotificationOption2.None },
@@ -75,8 +67,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Assignment_Suppressed()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -87,11 +80,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable, NotificationOption2.None },
@@ -104,8 +93,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_ConstantValue(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -115,9 +105,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M()
@@ -126,12 +115,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -144,8 +128,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_ConstantValue_DoNotCopyLeadingTriviaDirectives(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C {
                 void M()
                 {
@@ -160,9 +145,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     System.Console.WriteLine(x);
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C {
                 void M()
                 {
@@ -176,12 +160,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     System.Console.WriteLine(x);
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -192,8 +171,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Initialization_ConstantValue_RemoveUnusedParametersSuppressed()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -203,9 +183,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M()
@@ -214,12 +193,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CodeStyleOptions2.UnusedParameters, UnusedParametersPreference.NonPublicMethods, NotificationOption2.None },
@@ -230,8 +204,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Initialization_ConstantValue_RemoveUnusedParametersNotApplicable()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 public int M(int {|IDE0060:z|})
@@ -241,9 +216,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 public int M(int {|IDE0060:z|})
@@ -252,12 +226,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CodeStyleOptions2.UnusedParameters, UnusedParametersPreference.NonPublicMethods, NotificationOption2.Silent },
@@ -270,8 +239,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Assignment_ConstantValue(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -282,9 +252,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M()
@@ -294,12 +263,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -312,8 +276,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Assignment_ConstantValue_NoReads(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M()
@@ -322,21 +287,15 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     {|IDE0059:x|} = 1;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 void M()
                 {
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -347,8 +306,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Assignment_NonConstantValue_NoReads_PreferDiscard()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M()
@@ -359,9 +319,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
 
                 int M2() => 0;
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 void M()
@@ -371,12 +330,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -387,8 +341,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [Fact]
     public async Task Assignment_NonConstantValue_NoReads_PreferUnusedLocal()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M()
@@ -399,11 +354,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.UnusedLocalVariable },
@@ -416,8 +367,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_NonConstantValue_ParameterReference(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M(int p)
@@ -427,9 +379,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M(int {|IDE0060:p|})
@@ -438,12 +389,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -456,8 +402,9 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Assignment_NonConstantValue_ParameterReference(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M(int p)
@@ -468,9 +415,8 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M(int {|IDE0060:p|})
@@ -480,12 +426,7 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -498,19 +439,6 @@ public class RemoveUnusedValueAssignmentTests : RemoveUnusedValuesTestsBase
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option,
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                int M()
-                {
-                    int local = 0;
-                    int {|IDE0059:x|} = local;
-                    x = 2;
-                    return x;
-                }
-            }
-            """;
         var (fixedSource, iterations) = testBehaviors switch
         {
             CodeFixTestBehaviors.None =>
@@ -541,7 +469,18 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                int M()
+                {
+                    int local = 0;
+                    int {|IDE0059:x|} = local;
+                    x = 2;
+                    return x;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             CodeFixTestBehaviors = testBehaviors,
             NumberOfIncrementalIterations = iterations,
@@ -558,20 +497,6 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option,
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                int M()
-                {
-                    int local = 0;
-                    int x;
-                    {|IDE0059:x|} = local;
-                    x = 2;
-                    return x;
-                }
-            }
-            """;
         var (fixedSource, iterations) = testBehaviors switch
         {
             CodeFixTestBehaviors.None =>
@@ -604,7 +529,19 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                int M()
+                {
+                    int local = 0;
+                    int x;
+                    {|IDE0059:x|} = local;
+                    x = 2;
+                    return x;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             CodeFixTestBehaviors = testBehaviors,
             NumberOfIncrementalIterations = iterations,
@@ -621,8 +558,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_NonConstantValue_DefaultExpression(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             struct C
             {
                 C M()
@@ -632,9 +570,8 @@ class C
                     return c;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             struct C
             {
                 C M()
@@ -643,12 +580,7 @@ class C
                     return c;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -661,8 +593,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_NonConstantValue_CastExpression(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             struct C
             {
                 C M(object obj)
@@ -672,9 +605,8 @@ class C
                     return c;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             struct C
             {
                 C M(object {|IDE0060:obj|})
@@ -683,12 +615,7 @@ class C
                     return c;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -701,8 +628,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Initialization_NonConstantValue_FieldReferenceWithThisReceiver(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 private int field;
@@ -713,9 +641,8 @@ class C
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 private int field;
@@ -725,12 +652,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -743,8 +665,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Assignment_NonConstantValue_FieldReferenceWithNullReceiver(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 private static int field;
@@ -756,9 +679,8 @@ class C
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 private static int field;
@@ -769,12 +691,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -787,8 +704,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable, "int unused")]
     public async Task Assignment_NonConstantValue_FieldReferenceWithReceiver(object option, string fix)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 private int field;
@@ -800,9 +718,8 @@ class C
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            $$"""
+            """,
+            FixedCode = $$"""
             class C
             {
                 private int field;
@@ -814,12 +731,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -832,8 +744,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable, "int unused")]
     public async Task Initialization_NonConstantValue_PropertyReference(object option, string fix)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 private int Property { get { throw new System.Exception(); } }
@@ -845,9 +758,8 @@ class C
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            $$"""
+            """,
+            FixedCode = $$"""
             class C
             {
                 private int Property { get { throw new System.Exception(); } }
@@ -859,12 +771,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -877,8 +784,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable, "int unused")]
     public async Task Initialization_NonConstantValue_MethodInvocation(object option, string fix)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -890,9 +798,8 @@ class C
 
                 int M2() => 0;
             }
-            """;
-        var fixedSource =
-            $$"""
+            """,
+            FixedCode = $$"""
             class C
             {
                 int M()
@@ -904,12 +811,7 @@ class C
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -921,8 +823,10 @@ class C
     public async Task Initialization_NonConstantValue_PreferDiscard_CSharp6()
     {
         // Discard not supported in C# 6.0, so we fallback to unused local variable.
-        var source =
-            """
+
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -934,9 +838,8 @@ class C
 
                 int M2() => 0;
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M()
@@ -948,12 +851,7 @@ class C
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -967,8 +865,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable, "int unused")]
     public async Task Assignment_NonConstantValue_MethodInvocation(object option, string fix)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -981,9 +880,8 @@ class C
 
                 int M2() => 0;
             }
-            """;
-        var fixedSource =
-            $$"""
+            """,
+            FixedCode = $$"""
             class C
             {
                 int M()
@@ -996,12 +894,7 @@ class C
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1014,8 +907,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task Assignment_NonConstantValue_ImplicitConversion(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M(int {|IDE0060:x|}, short s)
@@ -1025,9 +919,8 @@ class C
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 int M(int {|IDE0060:x|}, short {|IDE0060:s|})
@@ -1036,12 +929,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1054,8 +942,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable, "int unused")]
     public async Task Assignment_NonConstantValue_UserDefinedConversion(object option, string fix)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M(int {|IDE0060:x|}, C c)
@@ -1075,9 +964,8 @@ class C
                     return default(C);
                 }
             }
-            """;
-        var fixedSource =
-            $$"""
+            """,
+            FixedCode = $$"""
             class C
             {
                 int M(int {|IDE0060:x|}, C c)
@@ -1097,12 +985,7 @@ class C
                     return default(C);
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1115,19 +998,6 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option,
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne | CodeFixTestBehaviors.SkipFixAllCheck)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                int M(int {|IDE0060:x|}, int {|IDE0060:y|})
-                {
-                    {|IDE0059:y|} = {|IDE0059:x|} = 1;
-                    x = 2;
-                    return x;
-                }
-            }
-            """;
-
         var (fixedSource, iterations) = ((UnusedValuePreference)option, testBehaviors) switch
         {
             (UnusedValuePreference.DiscardVariable, CodeFixTestBehaviors.None) =>
@@ -1170,7 +1040,17 @@ class C
 
         var test = new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                int M(int {|IDE0060:x|}, int {|IDE0060:y|})
+                {
+                    {|IDE0059:y|} = {|IDE0059:x|} = 1;
+                    x = 2;
+                    return x;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             CodeFixTestBehaviors = testBehaviors,
             NumberOfIncrementalIterations = iterations,
@@ -1194,21 +1074,6 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option,
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne | CodeFixTestBehaviors.SkipFixAllCheck)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                int M(int {|IDE0060:x|}, int {|IDE0060:y|})
-                {
-                    {|IDE0059:y|} = {|IDE0059:x|} = M2();
-                    x = 2;
-                    return x;
-                }
-
-                int M2() => 0;
-            }
-            """;
-
         var fixedSource = ((UnusedValuePreference)option, testBehaviors) switch
         {
             (UnusedValuePreference.DiscardVariable, CodeFixTestBehaviors.None) =>
@@ -1274,7 +1139,19 @@ class C
 
         var test = new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                int M(int {|IDE0060:x|}, int {|IDE0060:y|})
+                {
+                    {|IDE0059:y|} = {|IDE0059:x|} = M2();
+                    x = 2;
+                    return x;
+                }
+
+                int M2() => 0;
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             CodeFixTestBehaviors = testBehaviors,
             Options =
@@ -1296,8 +1173,9 @@ class C
     [InlineData(UnusedValuePreference.UnusedLocalVariable)]
     public async Task ReadAndWriteInSameExpression_MethodInvocation(object option)
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 int M()
@@ -1309,11 +1187,7 @@ class C
 
                 int M2(int x) => x;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1382,8 +1256,9 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option)
     {
         var (prefix, postfix) = applyAsPrefix ? (@operator, "") : ("", @operator);
-        var source =
-            $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             class C
             {
                 int M(int x)
@@ -1392,11 +1267,7 @@ class C
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1411,8 +1282,9 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option)
     {
         var (prefix, postfix) = applyAsPrefix ? (@operator, "") : ("", @operator);
-        var source =
-            $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             class C
             {
                 void M(int x)
@@ -1420,21 +1292,15 @@ class C
                     {{prefix}}{|IDE0059:x|}{{postfix}};
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 void M(int {|IDE0060:x|})
                 {
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1503,8 +1369,9 @@ class C
         [CombinatorialValues("1" /*Constant*/, "M2()" /*Non-constant*/)] string rightHandSide,
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option)
     {
-        var source =
-            $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             class C
             {
                 int M(int x)
@@ -1515,11 +1382,7 @@ class C
 
                 int M2() => 0;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1532,8 +1395,9 @@ class C
         [CombinatorialValues("true" /*Constant*/, "M2()" /*Non-constant*/)] string rightHandSide,
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option)
     {
-        var source =
-            $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             class C
             {
                 bool M(bool x)
@@ -1544,11 +1408,7 @@ class C
 
                 bool M2() => true;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -1561,8 +1421,9 @@ class C
         [CombinatorialValues("true" /*Constant*/, "M2()" /*Non-constant*/)] string rightHandSide,
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option)
     {
-        var source =
-            $$"""
+        await new VerifyCS.Test
+        {
+            TestCode = $$"""
             class C
             {
                 bool M()
@@ -1574,11 +1435,7 @@ class C
 
                 bool M2() => true;
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, (UnusedValuePreference)option },
@@ -2787,21 +2644,6 @@ class C
     public async Task DeclarationPatternInSwitchCase_WithOnlyWriteReference_TypePattern(
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                void M(object p)
-                {
-                    switch (p)
-                    {
-                        case int {|IDE0059:x|}:
-                            {|IDE0059:x|} = 1;
-                            break;
-                    };
-                }
-            }
-            """;
         var (fixedSource, iterations) = testBehaviors switch
         {
             CodeFixTestBehaviors.None =>
@@ -2838,7 +2680,20 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                void M(object p)
+                {
+                    switch (p)
+                    {
+                        case int {|IDE0059:x|}:
+                            {|IDE0059:x|} = 1;
+                            break;
+                    };
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             LanguageVersion = LanguageVersion.CSharp9,
             CodeFixTestBehaviors = testBehaviors,
@@ -3024,17 +2879,6 @@ class C
     public async Task DeclarationPatternInRecursivePattern_WithNoReference_TypePattern(
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                bool M(object p1, object p2)
-                {
-                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|IDE0059:x2|}) => false };
-                    return isZero;
-                }
-            }
-            """;
         var batchFixedSource =
             """
             class C
@@ -3065,7 +2909,16 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                bool M(object p1, object p2)
+                {
+                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|IDE0059:x2|}) => false };
+                    return isZero;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             BatchFixedCode = batchFixedSource,
             LanguageVersion = LanguageVersion.CSharp9,
@@ -3142,23 +2995,6 @@ class C
     public async Task DeclarationPatternInRecursivePattern_WithOnlyWriteReference_TypePattern(
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                bool M(object p1, object p2)
-                {
-                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|IDE0059:x2|}) => M2(out {|IDE0059:x1|}) };
-                    return isZero;
-                }
-
-                bool M2(out int x)
-                {
-                    x = 0;
-                    return false;
-                }
-            }
-            """;
         var batchFixedSource =
             """
             class C
@@ -3202,7 +3038,22 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                bool M(object p1, object p2)
+                {
+                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|IDE0059:x2|}) => M2(out {|IDE0059:x1|}) };
+                    return isZero;
+                }
+
+                bool M2(out int x)
+                {
+                    x = 0;
+                    return false;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             BatchFixedCode = batchFixedSource,
             LanguageVersion = LanguageVersion.CSharp9,
@@ -3294,23 +3145,6 @@ class C
         [CombinatorialValues(UnusedValuePreference.DiscardVariable, UnusedValuePreference.UnusedLocalVariable)] object option,
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne | CodeFixTestBehaviors.SkipFixAllCheck)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                bool M(object p1, object p2)
-                {
-                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|#0:x2|}) => M2(x1 = 0) && M2(x1) };
-                    return isZero;
-                }
-
-                bool M2(int {|IDE0060:x|})
-                {
-                    return false;
-                }
-            }
-            """;
-
         var fixedSource = ((UnusedValuePreference)option, testBehaviors) switch
         {
             (UnusedValuePreference.DiscardVariable, CodeFixTestBehaviors.None) =>
@@ -3369,7 +3203,21 @@ class C
 
         var test = new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                bool M(object p1, object p2)
+                {
+                    var isZero = (p1, p2) switch { (0, 0) => true, (int {|IDE0059:x1|}, int {|#0:x2|}) => M2(x1 = 0) && M2(x1) };
+                    return isZero;
+                }
+
+                bool M2(int {|IDE0060:x|})
+                {
+                    return false;
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             LanguageVersion = LanguageVersion.CSharp9,
             CodeFixTestBehaviors = testBehaviors,
@@ -8492,22 +8340,6 @@ Diagnostic("IDE0059"));
     public async Task DeclarationPatternInSwitchCase_WithTrivia_TypePattern(
         [CombinatorialValues(CodeFixTestBehaviors.None, CodeFixTestBehaviors.FixOne)] CodeFixTestBehaviors testBehaviors)
     {
-        var source =
-            """
-            class C
-            {
-                void M(object p)
-                {
-                    switch (p)
-                    {
-                        case /*Inline trivia*/ int {|IDE0059:x|}:
-                            // Other trivia
-                            {|IDE0059:x|} = 1;
-                            break;
-                    };
-                }
-            }
-            """;
         var (fixedSource, iterations) = testBehaviors switch
         {
             CodeFixTestBehaviors.None =>
@@ -8546,7 +8378,21 @@ class C
 
         await new VerifyCS.Test
         {
-            TestCode = source,
+            TestCode = """
+            class C
+            {
+                void M(object p)
+                {
+                    switch (p)
+                    {
+                        case /*Inline trivia*/ int {|IDE0059:x|}:
+                            // Other trivia
+                            {|IDE0059:x|} = 1;
+                            break;
+                    };
+                }
+            }
+            """,
             FixedState = { Sources = { fixedSource }, MarkupHandling = MarkupMode.Allow },
             LanguageVersion = LanguageVersion.CSharp9,
             CodeFixTestBehaviors = testBehaviors,
@@ -9185,8 +9031,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/40499")]
     public async Task UnusedLocalDefinedInPropertySubPattern_TypePattern()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 public object P { get; }
@@ -9196,9 +9043,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     return x;
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 public object P { get; }
@@ -9208,12 +9054,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     return x;
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
             Options =
             {
@@ -9303,8 +9144,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/38640")]
     public async Task DeclarationPatternInSwitchExpressionArm_UnusedLocal_TypePattern()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 string M(object obj)
@@ -9316,9 +9158,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     };
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 string M(object obj)
@@ -9330,12 +9171,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     };
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
             Options =
             {
@@ -9680,8 +9516,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/64291")]
     public async Task TestImplicitObjectCreationInInitialization()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M()
@@ -9689,9 +9526,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     C {|IDE0059:c|} = new();
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 void M()
@@ -9699,12 +9535,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     _ = new C();
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9716,8 +9547,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/64291")]
     public async Task TestImplicitObjectCreationInAssignment()
     {
-        var source =
-            """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(C c)
@@ -9726,9 +9558,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     {|IDE0059:c|} = new();
                 }
             }
-            """;
-        var fixedSource =
-            """
+            """,
+            FixedCode = """
             class C
             {
                 void M(C c)
@@ -9737,12 +9568,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     _ = new C();
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9754,7 +9580,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestPropertyPatternAssignment1()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(object obj)
@@ -9765,9 +9593,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(object obj)
@@ -9778,12 +9605,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9795,7 +9617,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestPropertyPatternAssignment2()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(object obj)
@@ -9806,9 +9630,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(object obj)
@@ -9819,12 +9642,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9836,7 +9654,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestPropertyPatternAssignment3()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(object obj)
@@ -9847,9 +9667,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(object obj)
@@ -9860,12 +9679,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9877,7 +9691,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestPropertyPatternAssignment4()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(object obj)
@@ -9888,9 +9704,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(object obj)
@@ -9901,12 +9716,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9918,7 +9728,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestListPatternAssignment1()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(string s)
@@ -9929,9 +9741,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(string s)
@@ -9942,12 +9753,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -9960,7 +9766,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestListPatternAssignment2()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(string[] ss)
@@ -9971,9 +9779,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(string[] ss)
@@ -9984,12 +9791,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -10002,7 +9804,9 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/66573")]
     public async Task TestListPatternAssignment3()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C
             {
                 void M(string[] ss)
@@ -10013,9 +9817,8 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        var fixedSource = """
+            """,
+            FixedCode = """
             class C
             {
                 void M(string[] ss)
@@ -10026,12 +9829,7 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                     }
                 }
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
-            FixedCode = fixedSource,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -10044,17 +9842,15 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/69643")]
     public async Task TestPrimaryConstructorParameterAssignment()
     {
-        var source = """
+        await new VerifyCS.Test
+        {
+            TestCode = """
             class C(string str) {
             	public void Reset() {
             		str = string.Empty;
             	}
             }
-            """;
-
-        await new VerifyCS.Test
-        {
-            TestCode = source,
+            """,
             Options =
             {
                 { CSharpCodeStyleOptions.UnusedValueAssignment, UnusedValuePreference.DiscardVariable },
@@ -10091,5 +9887,106 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
                 }
             }
             """);
+    }
+
+    [Fact]
+    public async Task TestWriteIntoPropertyOfRefStructParameter()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                internal sealed class C
+                {
+                    private static void M(ref int destinationIndex, Span<byte> buffer)
+                    {
+                        buffer[destinationIndex++] = (byte)0;
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
+
+    [Fact]
+    public async Task TestWriteIntoPropertyOfRefStructParameterThenWriteTheParameter()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                internal sealed class C
+                {
+                    private static void M(ref int destinationIndex, Span<byte> buffer)
+                    {
+                        buffer[destinationIndex++] = (byte)0;
+                        // /0/Test0.cs(8,9): info IDE0059: Unnecessary assignment of a value to 'buffer'
+                        {|IDE0059:buffer|} = default;
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
+
+    [Fact]
+    public async Task TestWriteIntoPropertyOfStructParameter()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                internal struct S
+                {
+                    public byte this[int index] { get => 0; set => _ = value; }
+                }
+
+                internal sealed class C
+                {
+                    private static void M(ref int destinationIndex, S buffer)
+                    {
+                        // Don't want to report IDE0059 here.  This write might be necessary as the struct might be wrapping
+                        // memory visible elsewhere.
+                        buffer[destinationIndex++] = (byte)0;
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77258")]
+    public async Task TestWriteIntoStructIndexer()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+
+                int[] a = new int[5];
+                MyStruct m = new MyStruct(a);
+                m[0] = 1;
+                Console.WriteLine(a[0]);
+
+                struct MyStruct(int[] a)
+                {
+                    private int[] array = a;
+
+                    public int this[int index]
+                    {
+                        get => array[index];
+                        set => array[index] = value;
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            LanguageVersion = LanguageVersion.CSharp12,
+            TestState =
+            {
+                OutputKind = OutputKind.ConsoleApplication,
+            }
+        }.RunAsync();
     }
 }

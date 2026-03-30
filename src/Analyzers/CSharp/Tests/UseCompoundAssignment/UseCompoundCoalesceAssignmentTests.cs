@@ -18,7 +18,7 @@ using VerifyCS = CSharpCodeFixVerifier<
     CSharpUseCompoundCoalesceAssignmentCodeFixProvider>;
 
 [Trait(Traits.Feature, Traits.Features.CodeActionsUseCompoundAssignment)]
-public class UseCompoundCoalesceAssignmentTests
+public sealed class UseCompoundCoalesceAssignmentTests
 {
     private static async Task TestInRegularAndScriptAsync(string testCode, string fixedCode)
     {
@@ -998,5 +998,47 @@ public class UseCompoundCoalesceAssignmentTests
                 }
             }
             """, LanguageVersion.CSharp12);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/76633")]
+    public async Task TestFieldKeyword1()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                class C
+                {
+                    string Goo
+                    {
+                        get
+                        {
+                            [|if|] (field is null)
+                            {
+                                field = "";
+                            }
+
+                            return field;
+                        }
+                    }
+                }
+                """,
+            FixedCode = """
+                using System;
+                class C
+                {
+                    string Goo
+                    {
+                        get
+                        {
+                            field ??= "";
+            
+                            return field;
+                        }
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.Preview,
+        }.RunAsync();
     }
 }
