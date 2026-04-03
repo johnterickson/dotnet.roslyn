@@ -158,11 +158,7 @@
       <CompilerVisibleProperty Include="PropertyNameToEval" />
       <CompilerVisibleItemMetadata Include="ItemType" MetadataName="MetadataToRetrieve" />
     -->
-<<<<<<< HEAD
-  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.GenerateMSBuildEditorConfig" AssemblyFile="$(MSBuildThisFileDirectory)Microsoft.Build.Tasks.CodeAnalysis.dll" PrecomputationMode="Dynamic" />
-=======
-  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.GenerateMSBuildEditorConfig" AssemblyFile="$(_BuildTasksDirectory)$(_BuildTasksAssemblyName).dll" />
->>>>>>> 143c0450185
+  <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.GenerateMSBuildEditorConfig" AssemblyFile="$(_BuildTasksDirectory)$(_BuildTasksAssemblyName).dll" PrecomputationMode="Dynamic" />
 
   <Target Name="GenerateMSBuildEditorConfigFile"
           BeforeTargets="BeforeCompile;CoreCompile"
