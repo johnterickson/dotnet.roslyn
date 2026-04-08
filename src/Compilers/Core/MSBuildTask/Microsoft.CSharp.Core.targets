@@ -36,6 +36,8 @@
     <ItemGroup>
       <_CoreCompileInputs Condition="'$(IsPrecomputePhase)' == 'true'" Include="@(CoreCompileInputs)" />
       <_CoreCompileInputs Condition="'$(IsPrecomputePhase)' != 'true'" Include="@(ReferencePathWithRefAssemblies)" />
+      <_CoreCompileInputs Condition="'$(IsPrecomputePhase)' != 'true'" Include="$(Win32Manifest)" />
+      <_CoreCompileOutputs Condition="'$(CompilerGeneratedFilesOutputPath)' != ''" Include="$(CompilerGeneratedFilesOutputPath)#dir" />
     </ItemGroup>
   </Target>
 
@@ -51,7 +53,6 @@
                   @(LinkResource);
                   @(EmbeddedDocumentation);
                   $(Win32Resource);
-                  $(Win32Manifest);
                   @(CustomAdditionalCompileInputs);
                   $(ResolvedCodeAnalysisRuleSet);
                   @(AdditionalFiles);
@@ -65,7 +66,8 @@
                    @(_DebugSymbolsIntermediatePath);
                    $(NonExistentFile);
                    @(CustomAdditionalCompileOutputs)"
-          Deferred="Item:ReferencePathWithRefAssemblies:r;Property:NoWin32Manifest:r">
+          PrecomputeOutputs="@(_CoreCompileOutputs)"
+          Deferred="Item:ReferencePathWithRefAssemblies:r;Property:NoWin32Manifest:r;Property:Win32Manifest:r">
     <!-- These two compiler warnings are raised when a reference is bound to a different version
              than specified in the assembly reference version number.  MSBuild raises the same warning in this case,
              so the compiler warning would be redundant. -->

@@ -3,18 +3,25 @@
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="Microsoft.Managed.Core.targets"/>
 
+  <Target Name="_VbCoreCompileInputs" DependsOnTargets="$(CoreCompileDependsOn);FindReferenceAssembliesForReferences">
+    <ItemGroup>
+      <_VbCoreCompileInputs Condition="'$(IsPrecomputePhase)' == 'true'" Include="@(CoreCompileInputs)" />
+      <_VbCoreCompileInputs Condition="'$(IsPrecomputePhase)' != 'true'" Include="@(ReferencePathWithRefAssemblies)" />
+      <_VbCoreCompileOutputs Condition="'$(CompilerGeneratedFilesOutputPath)' != ''" Include="$(CompilerGeneratedFilesOutputPath)#dir" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="CoreCompile"
           Inputs="$(MSBuildAllProjects);
                   @(Compile);
                   @(_CoreCompileResourceInputs);
                   $(ApplicationIcon);
                   $(KeyOriginatorFile);
-                  @(ReferencePathWithRefAssemblies);
+                  @(_VbCoreCompileInputs);
                   @(CompiledLicenseFile);
                   @(LinkResource);
                   @(EmbeddedDocumentation);
                   $(Win32Resource);
-                  $(Win32Manifest);
                   @(CustomAdditionalCompileInputs);
                   $(ResolvedCodeAnalysisRuleSet);
                   @(AdditionalFiles);
@@ -28,8 +35,9 @@
                    @(_DebugSymbolsIntermediatePath);
                    $(NonExistentFile);
                    @(CustomAdditionalCompileOutputs)"
-          Returns="@(VbcCommandLineArgs)"
-          DependsOnTargets="$(CoreCompileDependsOn);_BeforeVBCSCoreCompile">
+          PrecomputeOutputs="@(_VbCoreCompileOutputs)"
+          DependsOnTargets="_VbCoreCompileInputs;$(CoreCompileDependsOn);_BeforeVBCSCoreCompile"
+          Deferred="Item:ReferencePathWithRefAssemblies:r;Property:NoWin32Manifest:r;Property:Win32Manifest:r">
     <PropertyGroup>
       <_NoWarnings Condition="'$(WarningLevel)' == '0'">true</_NoWarnings>
       <_NoWarnings Condition="'$(WarningLevel)' == '1'">false</_NoWarnings>
