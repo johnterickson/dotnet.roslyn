@@ -12,6 +12,8 @@
     Common targets for managed compilers.
   -->
   <UsingTask TaskName="Microsoft.CodeAnalysis.BuildTasks.MapSourceRoots" AssemblyFile="$(_BuildTasksDirectory)$(_BuildTasksAssemblyName).dll" PrecomputationMode="Static" />
+  <UsingTaskPrecomputationMode TaskName="Csc" TaskMode="Dynamic" />
+  <UsingTaskPrecomputationMode TaskName="Vbc" TaskMode="Dynamic" />
 
   <Import Project="Microsoft.Managed.Core.CurrentVersions.targets" />
 
